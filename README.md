@@ -27,12 +27,16 @@ Run a local remote-inference mock, then point a Jetson-side client at it later.
 
 1. `python3 scripts/run_mock_server.py`
 2. In another shell: `python3 scripts/run_http_client.py`
+3. Optional: `python3 scripts/run_ros2_node.py`
 
 ## Jetson path
 
 The Jetson-side integration point lives in `navida_deploy/ros2_bridge.py`.
 It is kept ROS-free for now so the repo can be developed before a Jetson
 runtime is available.
+
+The processing shell lives in `navida_deploy/ros2_node.py` and can be
+connected to a real `rclpy` publisher once the Jetson runtime is present.
 
 ## What is not included yet
 
