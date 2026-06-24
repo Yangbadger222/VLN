@@ -5,6 +5,7 @@ from typing import Any, Protocol
 
 from .control import VelocityCommand, response_to_velocity_commands
 from .ros2_bridge import NavidaRos2Gateway
+from .twist_bridge import Twist2D, velocity_command_to_twist2d
 
 
 class CommandPublisher(Protocol):
@@ -36,3 +37,19 @@ class NavidaRos2Node:
         ):
             self.command_publisher.publish(command)
 
+    def process_frame_as_twist(self, step_index: int, instruction: str, image_msg: Any) -> list[Twist2D]:
+        response = self.gateway.infer(
+            session_id=self.session_id,
+            step_index=step_index,
+            instruction=instruction,
+            image_msg=image_msg,
+        )
+        return [
+            velocity_command_to_twist2d(command)
+            for command in response_to_velocity_commands(
+                response,
+                forward_speed=self.forward_speed,
+                turn_speed=self.turn_speed,
+                step_duration_s=self.step_duration_s,
+            )
+        ]

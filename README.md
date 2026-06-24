@@ -22,6 +22,7 @@ Run a local remote-inference mock, then point a Jetson-side client at it later.
 - a Jetson client skeleton
 - a ROS2-friendly bridge layer that stays importable without ROS2
 - a small simulator for offline testing
+- a `cmd_vel`-oriented motion bridge for the existing chassis controller
 
 ## Local smoke test
 
@@ -38,8 +39,13 @@ runtime is available.
 The processing shell lives in `navida_deploy/ros2_node.py` and can be
 connected to a real `rclpy` publisher once the Jetson runtime is present.
 
+For this vehicle, the chassis already listens to `/cmd_vel` via the
+`serial_twistctl` node in the vehicle repo. This scaffold now includes a
+lightweight twist bridge so the Jetson-side output can be projected into
+that existing control path without copying the whole vehicle stack.
+
 ## What is not included yet
 
 - Jetson-specific ROS2 launch files
 - real model weights loading
-- vehicle control integration
+- direct `rclpy`/`geometry_msgs` runtime bindings
