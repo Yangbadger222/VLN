@@ -22,6 +22,7 @@ class InferenceRequest:
 class ActionChunk:
     index: int
     action: str
+    repeat: int = 1
     score: float | None = None
 
 

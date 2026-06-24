@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import asdict
 from typing import Iterable
 
 from .messages import ActionChunk, InferenceRequest, InferenceResponse
+from .codec import response_to_dict
 
 
 def run_mock_inference(request: InferenceRequest) -> InferenceResponse:
@@ -17,12 +17,5 @@ def run_mock_inference(request: InferenceRequest) -> InferenceResponse:
         chunks=chunks,
         final=True,
     )
-
-
-def response_to_dict(response: InferenceResponse) -> dict:
-    return asdict(response)
-
-
 def stream_mock_chunks(response: InferenceResponse) -> Iterable[ActionChunk]:
     yield from response.chunks
-
