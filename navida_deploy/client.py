@@ -10,11 +10,13 @@ def build_request(
     step_index: int,
     instruction: str,
     image_path: str | None = None,
+    observation: Observation | None = None,
 ) -> InferenceRequest:
+    obs = observation or Observation(image_path=image_path)
     return InferenceRequest(
         session_id=session_id,
         step_index=step_index,
-        observation=Observation(image_path=image_path),
+        observation=obs,
         instruction=instruction,
     )
 

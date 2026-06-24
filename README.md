@@ -20,12 +20,19 @@ Run a local remote-inference mock, then point a Jetson-side client at it later.
 - a stdlib HTTP inference bridge
 - a remote inference server skeleton
 - a Jetson client skeleton
+- a ROS2-friendly bridge layer that stays importable without ROS2
 - a small simulator for offline testing
 
 ## Local smoke test
 
 1. `python3 scripts/run_mock_server.py`
 2. In another shell: `python3 scripts/run_http_client.py`
+
+## Jetson path
+
+The Jetson-side integration point lives in `navida_deploy/ros2_bridge.py`.
+It is kept ROS-free for now so the repo can be developed before a Jetson
+runtime is available.
 
 ## What is not included yet
 
