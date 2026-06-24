@@ -21,6 +21,7 @@ def request_to_dict(request: InferenceRequest) -> dict:
     return {
         "session_id": request.session_id,
         "step_index": request.step_index,
+        "instruction": request.instruction,
         "observation": {
             "image_path": request.observation.image_path,
             "image_bytes": _encode_bytes(request.observation.image_bytes),
@@ -34,6 +35,7 @@ def request_from_dict(payload: dict) -> InferenceRequest:
     return InferenceRequest(
         session_id=payload["session_id"],
         step_index=payload["step_index"],
+        instruction=payload.get("instruction", ""),
         observation=Observation(
             image_path=observation.get("image_path"),
             image_bytes=_decode_bytes(observation.get("image_bytes")),
@@ -74,4 +76,3 @@ def response_from_dict(payload: dict) -> InferenceResponse:
         ],
         final=payload.get("final", True),
     )
-

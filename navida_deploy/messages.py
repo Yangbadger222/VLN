@@ -16,6 +16,7 @@ class InferenceRequest:
     session_id: str
     step_index: int
     observation: Observation
+    instruction: str = ""
 
 
 @dataclass
