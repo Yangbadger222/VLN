@@ -21,6 +21,20 @@ def test_ros_image_to_observation_extracts_bytes_and_metadata():
     assert observation.metadata["encoding"] == "rgb8"
 
 
+def test_ros_image_to_observation_coerces_sequence_data_to_bytes():
+    image_msg = SimpleNamespace(
+        data=[1, 2, 255],
+        height=1,
+        width=1,
+        encoding="rgb8",
+        step=3,
+    )
+
+    observation = ros_image_to_observation(image_msg)
+
+    assert observation.image_bytes == b"\x01\x02\xff"
+
+
 def test_ros2_gateway_posts_instruction_and_image_message():
     captured = {}
 
@@ -54,4 +68,3 @@ def test_ros2_gateway_posts_instruction_and_image_message():
     assert captured["request"].instruction == "go forward"
     assert captured["request"].observation.image_bytes == b"\xaa\xbb"
     assert response.chunks[0].action == "forward"
-

@@ -1,8 +1,10 @@
 import pytest
 
 from navida_deploy.control import (
+    CommandWatchdog,
     VelocityCommand,
     action_chunk_to_velocity_command,
+    clamp_velocity_command,
     response_to_velocity_commands,
 )
 from navida_deploy.messages import ActionChunk, InferenceResponse
@@ -47,3 +49,22 @@ def test_action_chunk_to_velocity_command_rejects_unknown_actions():
     with pytest.raises(ValueError):
         action_chunk_to_velocity_command(ActionChunk(index=0, action="spin"))
 
+
+def test_clamp_velocity_command_limits_chassis_speeds():
+    command = VelocityCommand(action="forward", linear_x=1.2, angular_z=-3.0, duration_s=0.5)
+
+    clamped = clamp_velocity_command(command, max_linear_x=0.3, max_angular_z=0.9)
+
+    assert clamped.linear_x == 0.3
+    assert clamped.angular_z == -0.9
+
+
+def test_command_watchdog_expires_after_last_command_timeout():
+    watchdog = CommandWatchdog(timeout_s=1.0)
+
+    assert watchdog.expired(now_s=10.0) is False
+
+    watchdog.record_command(now_s=10.0)
+
+    assert watchdog.expired(now_s=10.5) is False
+    assert watchdog.expired(now_s=11.1) is True

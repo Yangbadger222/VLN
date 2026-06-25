@@ -1,13 +1,21 @@
 model:
   repo_id: waynechu/NaVIDA
-  device: cuda:0
+  device: cuda
 
 transport:
-  mode: grpc
+  mode: http
   host: 0.0.0.0
   port: 50051
+  infer_path: /v1/infer
+  health_path: /health
 
 robot:
-  control_rate_hz: 10
-  chunk_execution_mode: sequential
-
+  image_topic: /navida/camera/image_raw
+  cmd_vel_topic: /cmd_vel
+  forward_speed: 0.2
+  turn_speed: 0.8
+  max_linear_x: 0.3
+  max_angular_z: 1.0
+  command_timeout_s: 0.75
+  serial_port: /dev/serial_twistctl
+  baudrate: 115200

@@ -1,51 +1,87 @@
-# VLN Deployment Scaffold
+# VLN NaVIDA Deployment
 
-This repo is a starter scaffold for deploying the NaVIDA model to a Jetson-based robot with remote inference on an RTX 4070.
+This repo prepares a Jetson vehicle runtime that sends camera frames to a remote RTX 4070 inference service running `waynechu/NaVIDA`, then publishes safe `geometry_msgs/msg/Twist` commands to the chassis.
 
-## Layout
+## Runtime Chain
 
-- `navida_deploy/`: core Python package
-- `configs/`: runtime config templates
-- `scripts/`: local simulation and service entrypoints
-- `docs/notes/`: design notes and deployment assumptions
+1. Jetson camera node publishes `/navida/camera/image_raw`.
+2. Jetson controller posts image + instruction to `http://REMOTE_INFERENCE_HOST:50051/v1/infer`.
+3. The 4070 service runs the NaVIDA backend and returns action chunks.
+4. Jetson maps actions to clamped `Twist` commands on `/cmd_vel`.
+5. `serial_twistctl` subscribes `/cmd_vel` and writes STM32 serial commands like `vcx=0.200,wc=0.800`.
 
-## First goal
+The copied chassis bridge lives under `ros2_ws/src/sensor_drivers/serial_twistctl`, with its local `serial` dependency in `ros2_ws/src/sensor_drivers/serial`.
 
-Run a local remote-inference mock, then point a Jetson-side client at it later.
+## Local Smoke Test
 
-## What is included
+```bash
+python3 -m pip install -e ".[dev]"
+python3 scripts/run_inference_server.py --backend mock --host 127.0.0.1 --port 50051
+```
 
-- request/response message types
-- JSON codec for requests and responses
-- a stdlib HTTP inference bridge
-- a remote inference server skeleton
-- a Jetson client skeleton
-- a ROS2-friendly bridge layer that stays importable without ROS2
-- a small simulator for offline testing
-- a `cmd_vel`-oriented motion bridge for the existing chassis controller
+In another shell:
 
-## Local smoke test
+```bash
+python3 scripts/run_http_client.py
+python3 scripts/run_ros2_node.py
+python3 -m pytest -q
+```
 
-1. `python3 scripts/run_mock_server.py`
-2. In another shell: `python3 scripts/run_http_client.py`
-3. Optional: `python3 scripts/run_ros2_node.py`
+## 4070 Inference Host
 
-## Jetson path
+Host: `user@REMOTE_INFERENCE_HOST`
 
-The Jetson-side integration point lives in `navida_deploy/ros2_bridge.py`.
-It is kept ROS-free for now so the repo can be developed before a Jetson
-runtime is available.
+```bash
+git clone https://github.com/Yangbadger222/VLN.git
+cd VLN
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -U pip
+python -m pip install -e ".[server]"
+python scripts/run_inference_server.py --backend hf --host 0.0.0.0 --port 50051 --model-id waynechu/NaVIDA --device cuda
+```
 
-The processing shell lives in `navida_deploy/ros2_node.py` and can be
-connected to a real `rclpy` publisher once the Jetson runtime is present.
+Health check:
 
-For this vehicle, the chassis already listens to `/cmd_vel` via the
-`serial_twistctl` node in the vehicle repo. This scaffold now includes a
-lightweight twist bridge so the Jetson-side output can be projected into
-that existing control path without copying the whole vehicle stack.
+```bash
+curl http://127.0.0.1:50051/health
+```
 
-## What is not included yet
+Use `--backend mock` first if CUDA/model dependencies are not ready yet.
 
-- Jetson-specific ROS2 launch files
-- real model weights loading
-- direct `rclpy`/`geometry_msgs` runtime bindings
+## Jetson Vehicle Host
+
+Host: `user@JETSON_HOST`
+
+```bash
+git clone https://github.com/Yangbadger222/VLN.git
+cd VLN
+python3 -m pip install -e .
+sudo apt update
+sudo apt install -y python3-opencv
+cd ros2_ws
+rosdep install --from-paths src --ignore-src -r -y
+colcon build --symlink-install
+source install/setup.bash
+ros2 launch navida_vehicle navida_jetson.launch.py \
+  inference_url:=http://REMOTE_INFERENCE_HOST:50051/v1/infer \
+  camera_device:=/dev/video0 \
+  serial_port:=/dev/serial_twistctl
+```
+
+If `/dev/serial_twistctl` does not exist yet, launch with the actual device, for example `serial_port:=/dev/ttyUSB0`. If turning is reversed, add `angular_z_scale:=-1.0`.
+
+## ROS 2 Topics
+
+- `/navida/camera/image_raw`: `sensor_msgs/msg/Image`, published by `navida_vehicle camera_publisher`.
+- `/cmd_vel`: `geometry_msgs/msg/Twist`, published by `navida_vehicle remote_controller`.
+- `serial_twistctl_node` subscribes `/cmd_vel` and sends serial chassis commands.
+
+## Safety Defaults
+
+- `max_linear_x: 0.3`
+- `max_angular_z: 1.0`
+- `command_timeout_s: 0.75`
+- inference failure immediately publishes zero `Twist`
+
+Tune these in `ros2_ws/src/navida_vehicle/config/navida_jetson.yaml` or through launch arguments.

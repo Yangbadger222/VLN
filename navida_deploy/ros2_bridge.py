@@ -16,7 +16,22 @@ def ros_image_to_observation(image_msg: Any) -> Observation:
         "step": getattr(image_msg, "step", None),
     }
     data = getattr(image_msg, "data", None)
-    return Observation(image_bytes=data, metadata=metadata)
+    return Observation(image_bytes=_coerce_image_bytes(data), metadata=metadata)
+
+
+def _coerce_image_bytes(data: Any) -> bytes | None:
+    if data is None:
+        return None
+    if isinstance(data, bytes):
+        return data
+    if isinstance(data, bytearray):
+        return bytes(data)
+    if isinstance(data, memoryview):
+        return data.tobytes()
+    try:
+        return bytes(data)
+    except TypeError:
+        return None
 
 
 @dataclass

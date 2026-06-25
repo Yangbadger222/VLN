@@ -1,0 +1,30 @@
+navida_camera_publisher:
+  ros__parameters:
+    camera_device: /dev/video0
+    image_topic: /navida/camera/image_raw
+    frame_id: navida_camera
+    width: 640
+    height: 480
+    fps: 10.0
+
+navida_remote_controller:
+  ros__parameters:
+    image_topic: /navida/camera/image_raw
+    cmd_vel_topic: /cmd_vel
+    inference_url: http://REMOTE_INFERENCE_HOST:50051/v1/infer
+    instruction: Navigate safely with the front camera.
+    forward_speed: 0.2
+    turn_speed: 0.8
+    step_duration_s: 0.5
+    max_linear_x: 0.3
+    max_angular_z: 1.0
+    command_timeout_s: 0.75
+    min_inference_period_s: 0.5
+
+serial_twistctl_node:
+  ros__parameters:
+    port: /dev/serial_twistctl
+    baudrate: 115200
+    send_attempts: 1
+    delay_between_attempts_ms: 0
+    angular_z_scale: 1.0

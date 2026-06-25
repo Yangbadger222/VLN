@@ -8,5 +8,17 @@ version = "0.1.0"
 description = "Deployment scaffold for NaVIDA on Jetson with remote inference"
 requires-python = ">=3.9"
 
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+server = [
+  "accelerate",
+  "pillow",
+  "torch",
+  "transformers",
+]
+jetson = [
+  "opencv-python",
+]
+
 [tool.setuptools]
 packages = ["navida_deploy"]
