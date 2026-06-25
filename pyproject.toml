@@ -12,6 +12,7 @@ requires-python = ">=3.9"
 dev = ["pytest>=8"]
 server = [
   "accelerate",
+  "bitsandbytes",
   "pillow",
   "torch",
   "transformers",

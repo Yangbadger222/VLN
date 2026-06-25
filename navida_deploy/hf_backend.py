@@ -16,6 +16,7 @@ class HuggingFaceQwen25VLBackend:
     input_device: str = "cuda"
     trust_remote_code: bool = False
     max_new_tokens: int = 64
+    load_in_4bit: bool = True
 
     _model: Any | None = None
     _processor: Any | None = None
@@ -25,6 +26,19 @@ class HuggingFaceQwen25VLBackend:
             from transformers import AutoProcessor
         except ImportError as exc:  # pragma: no cover
             raise RuntimeError("transformers is required for the Hugging Face backend") from exc
+        quantization_config = None
+        if self.load_in_4bit:
+            try:
+                import torch
+                from transformers import BitsAndBytesConfig
+            except ImportError as exc:  # pragma: no cover
+                raise RuntimeError(
+                    "Install torch and bitsandbytes on the 4070 host to enable 4-bit loading."
+                ) from exc
+            quantization_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=torch.bfloat16,
+            )
         try:
             from transformers import Qwen2_5_VLForConditionalGeneration as ModelClass
         except ImportError:  # pragma: no cover
@@ -34,6 +48,7 @@ class HuggingFaceQwen25VLBackend:
             self.model_id,
             torch_dtype="auto",
             device_map=self.device_map(),
+            quantization_config=quantization_config,
             trust_remote_code=self.trust_remote_code,
         )
         processor = AutoProcessor.from_pretrained(

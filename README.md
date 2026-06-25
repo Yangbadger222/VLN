@@ -37,8 +37,9 @@ cd VLN
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -U pip
+python -m pip install --index-url https://download.pytorch.org/whl/cu121 torch torchvision torchaudio
 python -m pip install -e ".[server]"
-python scripts/run_inference_server.py --backend hf --host 0.0.0.0 --port 50051 --model-id waynechu/NaVIDA --device cuda
+python scripts/run_inference_server.py --backend hf --host 0.0.0.0 --port 50051 --model-id waynechu/NaVIDA --device cuda --load-in-4bit
 ```
 
 Health check:
