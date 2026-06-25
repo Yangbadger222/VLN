@@ -1,6 +1,6 @@
 navida_camera_publisher:
   ros__parameters:
-    camera_device: /dev/video0
+    camera_device: auto
     image_topic: /navida/camera/image_raw
     frame_id: navida_camera
     width: 640

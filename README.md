@@ -66,9 +66,10 @@ colcon build --symlink-install
 source install/setup.bash
 ros2 launch navida_vehicle navida_jetson.launch.py \
   inference_url:=http://REMOTE_INFERENCE_HOST:50051/v1/infer \
-  camera_device:=/dev/video0 \
   serial_port:=/dev/serial_twistctl
 ```
+
+`camera_device` now defaults to `auto`, which probes `/dev/video0` through `/dev/video5` and picks the first device that can return a frame. Override it explicitly with `camera_device:=/dev/video4` when you already know the correct capture node.
 
 If `/dev/serial_twistctl` does not exist yet, launch with the actual device, for example `serial_port:=/dev/ttyUSB0`. If turning is reversed, add `angular_z_scale:=-1.0`.
 

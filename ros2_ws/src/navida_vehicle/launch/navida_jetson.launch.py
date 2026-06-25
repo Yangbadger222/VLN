@@ -33,7 +33,7 @@ def generate_launch_description() -> LaunchDescription:
             _arg("instruction", "Navigate safely with the front camera.", "Navigation instruction"),
             _arg("image_topic", "/navida/camera/image_raw", "Camera image topic"),
             _arg("cmd_vel_topic", "/cmd_vel", "Chassis velocity topic"),
-            _arg("camera_device", "/dev/video0", "USB camera device"),
+            _arg("camera_device", "auto", "USB camera device or auto to probe /dev/video*"),
             _arg("camera_width", "640", "Camera width"),
             _arg("camera_height", "480", "Camera height"),
             _arg("camera_fps", "10.0", "Camera frames per second"),
