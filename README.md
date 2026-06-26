@@ -39,7 +39,7 @@ source .venv/bin/activate
 python -m pip install -U pip
 python -m pip install --index-url https://download.pytorch.org/whl/cu121 torch torchvision torchaudio
 python -m pip install -e ".[server]"
-python scripts/run_inference_server.py --backend hf --host 0.0.0.0 --port 50051 --model-id waynechu/NaVIDA --device cuda --load-in-4bit
+python scripts/run_inference_server.py --backend hf --host 0.0.0.0 --port 50051 --model-id waynechu/NaVIDA --device cuda --load-in-4bit --target-detector-model-id google/owlvit-base-patch32
 ```
 
 Health check:
@@ -67,7 +67,9 @@ colcon build --symlink-install
 source install/setup.bash
 ros2 launch navida_vehicle navida_jetson.launch.py \
   inference_url:=http://REMOTE_INFERENCE_HOST:50051/v1/infer \
-  serial_port:=/dev/serial_twistctl
+  serial_port:=/dev/serial_twistctl \
+  instruction:="Go to the target object in front of you. Approach slowly and stop when close." \
+  target_label:=box
 ```
 
 `camera_device` now defaults to `auto`, which probes `/dev/video0` through `/dev/video5` and picks the first device that can return a frame. Override it explicitly with `camera_device:=/dev/video4` when you already know the correct capture node.
@@ -105,3 +107,5 @@ For semantic goals such as "go to the box/chair/door", the 4070 backend asks the
 ```
 
 When this metadata is present, Jetson uses `center_x` and `area` to turn slowly toward the target, drive when centered, and stop when the target is close. If metadata is missing, the controller falls back to the older discrete action output.
+
+NaVIDA may return only discrete actions for some prompts, so the 4070 service also supports an open-vocabulary detector through `--target-detector-model-id` using OWL-ViT by default. Pass `target_label:=box`, `target_label:=chair`, `target_label:=door`, etc. from the Jetson launch command to make the detector look for the right object class.

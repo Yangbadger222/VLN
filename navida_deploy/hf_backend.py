@@ -17,9 +17,12 @@ class HuggingFaceQwen25VLBackend:
     trust_remote_code: bool = False
     max_new_tokens: int = 64
     load_in_4bit: bool = True
+    target_detector_model_id: str | None = None
+    target_detector_threshold: float = 0.1
 
     _model: Any | None = None
     _processor: Any | None = None
+    _target_detector: Any | None = None
 
     def load(self):
         try:
@@ -57,6 +60,20 @@ class HuggingFaceQwen25VLBackend:
         )
         return model, processor
 
+    def load_target_detector(self):
+        if not self.target_detector_model_id:
+            return None
+        try:
+            from transformers import pipeline
+        except ImportError as exc:  # pragma: no cover
+            raise RuntimeError("transformers is required for the target detector") from exc
+        device = 0 if self.input_device == "cuda" else -1
+        return pipeline(
+            task="zero-shot-object-detection",
+            model=self.target_detector_model_id,
+            device=device,
+        )
+
     def device_map(self):
         if self.device in {"auto", "balanced", "balanced_low_0", "sequential"}:
             return self.device
@@ -66,6 +83,11 @@ class HuggingFaceQwen25VLBackend:
         if self._model is None or self._processor is None:
             self._model, self._processor = self.load()
         return self._model, self._processor
+
+    def _get_target_detector(self):
+        if self.target_detector_model_id and self._target_detector is None:
+            self._target_detector = self.load_target_detector()
+        return self._target_detector
 
     def infer(self, request: InferenceRequest) -> InferenceResponse:
         model, processor = self._get_model_and_processor()
@@ -94,12 +116,33 @@ class HuggingFaceQwen25VLBackend:
             skip_special_tokens=True,
             clean_up_tokenization_spaces=False,
         )[0]
+        metadata = parse_target_metadata(generated_text)
+        if not metadata:
+            metadata = self.detect_target(request, image)
         return InferenceResponse(
             session_id=request.session_id,
             step_index=request.step_index,
             chunks=parse_action_text(generated_text),
             final=True,
-            metadata=parse_target_metadata(generated_text),
+            metadata=metadata,
+        )
+
+    def detect_target(self, request: InferenceRequest, image: Any) -> dict[str, Any]:
+        detector = self._get_target_detector()
+        if detector is None:
+            return {}
+        label = target_label_from_request(request)
+        if not label:
+            return {}
+        detections = detector(
+            image,
+            candidate_labels=[label],
+            threshold=self.target_detector_threshold,
+        )
+        return detection_to_target_metadata(
+            detections,
+            image_width=image.width,
+            image_height=image.height,
         )
 
 
@@ -150,6 +193,58 @@ def parse_target_metadata(text: str) -> dict[str, Any]:
             "confidence": _number_or_none(target.get("confidence")),
         }
     }
+
+
+def detection_to_target_metadata(
+    detections: list[dict[str, Any]],
+    image_width: int,
+    image_height: int,
+) -> dict[str, Any]:
+    if image_width <= 0 or image_height <= 0:
+        return {}
+    valid = [detection for detection in detections if isinstance(detection, dict)]
+    if not valid:
+        return {"target": {"visible": False, "center_x": None, "area": None, "confidence": 0.0}}
+    best = max(valid, key=lambda detection: float(detection.get("score") or 0.0))
+    box = best.get("box") or {}
+    try:
+        xmin = float(box["xmin"])
+        ymin = float(box["ymin"])
+        xmax = float(box["xmax"])
+        ymax = float(box["ymax"])
+    except (KeyError, TypeError, ValueError):
+        return {"target": {"visible": False, "center_x": None, "area": None, "confidence": 0.0}}
+    center_x = ((xmin + xmax) / 2.0) / image_width
+    area = max(0.0, xmax - xmin) * max(0.0, ymax - ymin) / float(image_width * image_height)
+    return {
+        "target": {
+            "visible": True,
+            "center_x": round(max(0.0, min(1.0, center_x)), 6),
+            "area": round(max(0.0, min(1.0, area)), 6),
+            "confidence": round(float(best.get("score") or 0.0), 6),
+        }
+    }
+
+
+def target_label_from_request(request: InferenceRequest) -> str:
+    metadata = request.observation.metadata or {}
+    label = str(metadata.get("target_label") or "").strip()
+    if label:
+        return label
+    instruction = request.instruction.strip()
+    prefixes = [
+        "go to the ",
+        "go to ",
+        "approach the ",
+        "approach ",
+        "move to the ",
+        "move to ",
+    ]
+    lowered = instruction.lower()
+    for prefix in prefixes:
+        if lowered.startswith(prefix):
+            return instruction[len(prefix) :].split(".")[0].strip()
+    return instruction
 
 
 def _extract_actions_from_json(text: str) -> list[str]:

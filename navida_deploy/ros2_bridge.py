@@ -92,8 +92,11 @@ class NavidaRos2Gateway:
         step_index: int,
         instruction: str,
         image_msg: Any,
+        target_label: str = "",
     ) -> InferenceResponse:
         observation = ros_image_to_observation(image_msg)
+        if target_label:
+            observation.metadata["target_label"] = target_label
         request = build_request(
             session_id=session_id,
             step_index=step_index,

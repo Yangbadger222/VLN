@@ -27,6 +27,7 @@ class NavidaRemoteController:
                 self.declare_parameter("inference_url", "http://REMOTE_INFERENCE_HOST:50051/v1/infer")
                 self.declare_parameter("inference_timeout_s", 20.0)
                 self.declare_parameter("instruction", "Navigate safely with the front camera.")
+                self.declare_parameter("target_label", "")
                 self.declare_parameter("session_id", "")
                 self.declare_parameter("forward_speed", 0.15)
                 self.declare_parameter("turn_speed", 0.35)
@@ -76,6 +77,7 @@ class NavidaRemoteController:
                         step_index=self._step_index,
                         instruction=self._instruction,
                         image_msg=image_msg,
+                        target_label=str(self.get_parameter("target_label").value),
                     )
                 except Exception as exc:
                     self.get_logger().error(f"remote inference failed: {exc}")

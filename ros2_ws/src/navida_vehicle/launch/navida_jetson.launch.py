@@ -12,6 +12,7 @@ def _arg(name: str, default: str, description: str) -> DeclareLaunchArgument:
 def generate_launch_description() -> LaunchDescription:
     inference_url = LaunchConfiguration("inference_url")
     instruction = LaunchConfiguration("instruction")
+    target_label = LaunchConfiguration("target_label")
     image_topic = LaunchConfiguration("image_topic")
     cmd_vel_topic = LaunchConfiguration("cmd_vel_topic")
     camera_device = LaunchConfiguration("camera_device")
@@ -39,6 +40,7 @@ def generate_launch_description() -> LaunchDescription:
         [
             _arg("inference_url", "http://REMOTE_INFERENCE_HOST:50051/v1/infer", "4070 inference endpoint"),
             _arg("instruction", "Navigate safely with the front camera.", "Navigation instruction"),
+            _arg("target_label", "", "Optional open-vocabulary detector label, e.g. box, chair, door"),
             _arg("image_topic", "/navida/camera/image_raw", "Camera image topic"),
             _arg("cmd_vel_topic", "/cmd_vel", "Chassis velocity topic"),
             _arg("camera_device", "auto", "USB camera device or auto to probe /dev/video*"),
@@ -102,6 +104,7 @@ def generate_launch_description() -> LaunchDescription:
                         "cmd_vel_topic": cmd_vel_topic,
                         "inference_url": inference_url,
                         "instruction": instruction,
+                        "target_label": target_label,
                         "inference_timeout_s": ParameterValue(inference_timeout_s, value_type=float),
                         "forward_speed": ParameterValue(forward_speed, value_type=float),
                         "turn_speed": ParameterValue(turn_speed, value_type=float),

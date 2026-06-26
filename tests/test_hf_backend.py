@@ -1,4 +1,9 @@
-from navida_deploy.hf_backend import HuggingFaceQwen25VLBackend, parse_action_text, parse_target_metadata
+from navida_deploy.hf_backend import (
+    HuggingFaceQwen25VLBackend,
+    detection_to_target_metadata,
+    parse_action_text,
+    parse_target_metadata,
+)
 from navida_deploy.messages import InferenceRequest, Observation
 
 
@@ -69,5 +74,25 @@ def test_parse_target_metadata_extracts_json_target():
             "center_x": 0.75,
             "area": 0.12,
             "confidence": 0.8,
+        }
+    }
+
+
+def test_detection_to_target_metadata_uses_best_box():
+    metadata = detection_to_target_metadata(
+        [
+            {"score": 0.2, "box": {"xmin": 0, "ymin": 0, "xmax": 10, "ymax": 10}},
+            {"score": 0.9, "box": {"xmin": 40, "ymin": 10, "xmax": 80, "ymax": 50}},
+        ],
+        image_width=100,
+        image_height=100,
+    )
+
+    assert metadata == {
+        "target": {
+            "visible": True,
+            "center_x": 0.6,
+            "area": 0.16,
+            "confidence": 0.9,
         }
     }
