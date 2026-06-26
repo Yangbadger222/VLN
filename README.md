@@ -57,7 +57,8 @@ Host: `user@JETSON_HOST`
 ```bash
 git clone https://github.com/Yangbadger222/VLN.git
 cd VLN
-python3 -m pip install -e .
+python3 -m pip install --user -U "pip>=24" "setuptools>=68,<80" wheel
+python3 -m pip install --user --no-build-isolation -e .
 sudo apt update
 sudo apt install -y python3-opencv
 cd ros2_ws
@@ -72,6 +73,8 @@ ros2 launch navida_vehicle navida_jetson.launch.py \
 `camera_device` now defaults to `auto`, which probes `/dev/video0` through `/dev/video5` and picks the first device that can return a frame. Override it explicitly with `camera_device:=/dev/video4` when you already know the correct capture node.
 
 The Jetson-side bridge now JPEG-compresses ROS image frames before posting them to the 4070. That makes the payload a real decodable image for the HF backend and keeps the request size low enough for Tailscale links. `inference_timeout_s` defaults to `20.0` and can be raised further during first on-car tests.
+
+Jetson uses ROS 2 Humble's `colcon-core`, which currently requires `setuptools<80`. Keep the user-level `setuptools>=68,<80` pin above; it supports editable installs without breaking `colcon build`.
 
 If `/dev/serial_twistctl` does not exist yet, launch with the actual device, for example `serial_port:=/dev/ttyUSB0`. If turning is reversed, add `angular_z_scale:=-1.0`.
 

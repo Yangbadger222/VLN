@@ -1,8 +1,11 @@
 __pycache__/
 *.py[cod]
+.DS_Store
 .pytest_cache/
 *.egg-info/
 .venv/
+artifacts/
+pointcloud_map_*.png
 build/
 install/
 log/

@@ -11,7 +11,10 @@ setup(
         ("share/ament_index/resource_index/packages", [f"resource/{package_name}"]),
         (f"share/{package_name}", ["package.xml"]),
         (f"share/{package_name}/config", ["config/navida_jetson.yaml"]),
-        (f"share/{package_name}/launch", ["launch/navida_jetson.launch.py"]),
+        (
+            f"share/{package_name}/launch",
+            ["launch/navida_jetson.launch.py", "launch/pointcloud_player.launch.py"],
+        ),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
@@ -22,6 +25,8 @@ setup(
     entry_points={
         "console_scripts": [
             "camera_publisher = navida_vehicle.camera_publisher:main",
+            "csv_to_pcd = navida_vehicle.csv_to_pcd:main",
+            "pointcloud_player = navida_vehicle.pointcloud_player:main",
             "remote_controller = navida_vehicle.remote_controller:main",
         ],
     },
