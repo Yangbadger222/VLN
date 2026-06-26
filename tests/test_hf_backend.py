@@ -110,3 +110,41 @@ def test_detection_to_target_metadata_prefers_large_centered_target():
 
     assert metadata["target"]["center_x"] == 0.504687
     assert metadata["target"]["area"] == 0.262363
+
+
+def test_detect_target_expands_bare_object_label_to_prompt_phrase():
+    class FakeImage:
+        width = 100
+        height = 100
+
+    class FakeDetector:
+        def __call__(self, image, candidate_labels, threshold):
+            if "a chair" not in candidate_labels:
+                return []
+            return [
+                {
+                    "score": 0.3,
+                    "label": "a chair",
+                    "box": {"xmin": 20, "ymin": 10, "xmax": 80, "ymax": 70},
+                }
+            ]
+
+    backend = HuggingFaceQwen25VLBackend(target_detector_model_id="fake-detector")
+    backend._target_detector = FakeDetector()
+    request = InferenceRequest(
+        session_id="s1",
+        step_index=0,
+        instruction="Go to the chair",
+        observation=Observation(metadata={"target_label": "chair"}),
+    )
+
+    metadata = backend.detect_target(request, FakeImage())
+
+    assert metadata == {
+        "target": {
+            "visible": True,
+            "center_x": 0.5,
+            "area": 0.36,
+            "confidence": 0.3,
+        }
+    }

@@ -136,7 +136,7 @@ class HuggingFaceQwen25VLBackend:
             return {}
         detections = detector(
             image,
-            candidate_labels=[label],
+            candidate_labels=target_candidate_labels(label),
             threshold=self.target_detector_threshold,
         )
         return detection_to_target_metadata(
@@ -264,6 +264,17 @@ def target_label_from_request(request: InferenceRequest) -> str:
         if lowered.startswith(prefix):
             return instruction[len(prefix) :].split(".")[0].strip()
     return instruction
+
+
+def target_candidate_labels(label: str) -> list[str]:
+    normalized = " ".join(label.strip().split())
+    if not normalized:
+        return []
+    lowered = normalized.lower()
+    candidates = [normalized]
+    if not lowered.startswith(("a ", "an ", "the ")):
+        candidates.extend([f"a {normalized}", f"the {normalized}"])
+    return list(dict.fromkeys(candidates))
 
 
 def _extract_actions_from_json(text: str) -> list[str]:
