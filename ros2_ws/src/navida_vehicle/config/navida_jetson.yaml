@@ -14,12 +14,12 @@ navida_remote_controller:
     inference_url: http://REMOTE_INFERENCE_HOST:50051/v1/infer
     inference_timeout_s: 20.0
     instruction: Navigate safely with the front camera.
-    forward_speed: 0.2
-    turn_speed: 0.8
-    step_duration_s: 0.5
-    max_linear_x: 0.3
-    max_angular_z: 1.0
-    command_timeout_s: 0.75
+    forward_speed: 0.15
+    turn_speed: 0.35
+    step_duration_s: 0.35
+    max_linear_x: 0.2
+    max_angular_z: 0.45
+    command_timeout_s: 0.5
     min_inference_period_s: 0.5
 
 serial_twistctl_node:

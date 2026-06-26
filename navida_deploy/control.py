@@ -46,6 +46,15 @@ def clamp_velocity_command(
     )
 
 
+def velocity_command_to_pulse(command: VelocityCommand) -> list[VelocityCommand]:
+    if command.stop:
+        return [command]
+    return [
+        command,
+        VelocityCommand(action="stop", duration_s=0.0, stop=True),
+    ]
+
+
 def action_chunk_to_velocity_command(
     chunk: ActionChunk,
     forward_speed: float = 0.2,

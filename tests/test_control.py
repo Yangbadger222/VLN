@@ -6,6 +6,7 @@ from navida_deploy.control import (
     action_chunk_to_velocity_command,
     clamp_velocity_command,
     response_to_velocity_commands,
+    velocity_command_to_pulse,
 )
 from navida_deploy.messages import ActionChunk, InferenceResponse
 
@@ -68,3 +69,14 @@ def test_command_watchdog_expires_after_last_command_timeout():
 
     assert watchdog.expired(now_s=10.5) is False
     assert watchdog.expired(now_s=11.1) is True
+
+
+def test_velocity_command_to_pulse_stops_after_motion_command():
+    command = VelocityCommand(action="turn_right", angular_z=-0.4, duration_s=0.25)
+
+    pulse = velocity_command_to_pulse(command)
+
+    assert pulse == [
+        command,
+        VelocityCommand(action="stop", duration_s=0.0, stop=True),
+    ]

@@ -86,9 +86,10 @@ If `/dev/serial_twistctl` does not exist yet, launch with the actual device, for
 
 ## Safety Defaults
 
-- `max_linear_x: 0.3`
-- `max_angular_z: 1.0`
-- `command_timeout_s: 0.75`
+- `max_linear_x: 0.2`
+- `max_angular_z: 0.45`
+- `command_timeout_s: 0.5`
+- every non-stop command is followed by an explicit zero `Twist` after `step_duration_s`
 - inference failure immediately publishes zero `Twist`
 
 Tune these in `ros2_ws/src/navida_vehicle/config/navida_jetson.yaml` or through launch arguments.

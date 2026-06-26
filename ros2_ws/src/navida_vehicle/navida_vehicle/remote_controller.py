@@ -4,7 +4,7 @@ import time
 from functools import partial
 from uuid import uuid4
 
-from navida_deploy.control import CommandWatchdog, response_to_velocity_commands
+from navida_deploy.control import CommandWatchdog, response_to_velocity_commands, velocity_command_to_pulse
 from navida_deploy.http_client import post_inference
 from navida_deploy.rclpy_runtime import build_twist_message
 from navida_deploy.ros2_bridge import NavidaRos2Gateway
@@ -27,12 +27,12 @@ class NavidaRemoteController:
                 self.declare_parameter("inference_timeout_s", 20.0)
                 self.declare_parameter("instruction", "Navigate safely with the front camera.")
                 self.declare_parameter("session_id", "")
-                self.declare_parameter("forward_speed", 0.2)
-                self.declare_parameter("turn_speed", 0.8)
-                self.declare_parameter("step_duration_s", 0.5)
-                self.declare_parameter("max_linear_x", 0.3)
-                self.declare_parameter("max_angular_z", 1.0)
-                self.declare_parameter("command_timeout_s", 0.75)
+                self.declare_parameter("forward_speed", 0.15)
+                self.declare_parameter("turn_speed", 0.35)
+                self.declare_parameter("step_duration_s", 0.35)
+                self.declare_parameter("max_linear_x", 0.2)
+                self.declare_parameter("max_angular_z", 0.45)
+                self.declare_parameter("command_timeout_s", 0.5)
                 self.declare_parameter("min_inference_period_s", 0.5)
 
                 self._twist_type = Twist
@@ -86,7 +86,7 @@ class NavidaRemoteController:
                 if not commands:
                     self._publish_stop()
                     return
-                self._publish_twist(velocity_command_to_twist2d(commands[0]))
+                self._publish_velocity_pulse(commands[0])
 
             def _on_watchdog_timer(self) -> None:
                 if self._watchdog.expired(time.monotonic()):
@@ -95,6 +95,13 @@ class NavidaRemoteController:
 
             def _publish_stop(self) -> None:
                 self._publish_twist(Twist2D())
+
+            def _publish_velocity_pulse(self, command) -> None:
+                pulse = velocity_command_to_pulse(command)
+                for index, pulse_command in enumerate(pulse):
+                    self._publish_twist(velocity_command_to_twist2d(pulse_command))
+                    if index < len(pulse) - 1 and pulse_command.duration_s > 0:
+                        time.sleep(float(pulse_command.duration_s))
 
             def _publish_twist(self, twist: Twist2D) -> None:
                 self._cmd_pub.publish(build_twist_message(twist, twist_type=self._twist_type))
