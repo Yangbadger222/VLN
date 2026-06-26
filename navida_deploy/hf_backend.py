@@ -99,6 +99,7 @@ class HuggingFaceQwen25VLBackend:
             step_index=request.step_index,
             chunks=parse_action_text(generated_text),
             final=True,
+            metadata=parse_target_metadata(generated_text),
         )
 
 
@@ -106,8 +107,13 @@ def build_navida_messages(request: InferenceRequest, image: Any | None = None) -
     instruction = request.instruction or "Navigate safely using the current camera view."
     prompt = (
         "You are controlling a small ground robot. "
-        "Choose only from these actions: forward, turn_left, turn_right, stop. "
-        "Return JSON exactly like {\"actions\": [\"forward\", \"stop\"]}. "
+        "Find the navigation target described by the instruction in the image. "
+        "Return JSON exactly like "
+        "{\"target\":{\"visible\":true,\"center_x\":0.50,\"area\":0.10,\"confidence\":0.80},"
+        "\"actions\":[\"forward\"]}. "
+        "Use center_x from 0.0 left to 1.0 right. Use area as the target bounding box area "
+        "divided by image area. If the target is not visible, set visible false and actions [\"stop\"]. "
+        "Choose actions only from: forward, turn_left, turn_right, stop. "
         f"Navigation instruction: {instruction}"
     )
     return [
@@ -126,6 +132,24 @@ def parse_action_text(text: str) -> list[ActionChunk]:
     if not actions:
         actions = ["stop"]
     return chunk_atomic_actions(actions, merge_probability=1.0, rng=lambda: 0.0)
+
+
+def parse_target_metadata(text: str) -> dict[str, Any]:
+    try:
+        payload = json.loads(_slice_json_object(text))
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return {}
+    target = payload.get("target")
+    if not isinstance(target, dict):
+        return {}
+    return {
+        "target": {
+            "visible": bool(target.get("visible")),
+            "center_x": _number_or_none(target.get("center_x")),
+            "area": _number_or_none(target.get("area")),
+            "confidence": _number_or_none(target.get("confidence")),
+        }
+    }
 
 
 def _extract_actions_from_json(text: str) -> list[str]:
@@ -170,6 +194,15 @@ def _normalize_action(action: str) -> str:
     if normalized in {"forward", "turn_left", "turn_right", "stop"}:
         return normalized
     return ""
+
+
+def _number_or_none(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _slice_json_object(text: str) -> str:

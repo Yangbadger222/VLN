@@ -8,6 +8,7 @@ from navida_deploy.control import CommandWatchdog, response_to_velocity_commands
 from navida_deploy.http_client import post_inference
 from navida_deploy.rclpy_runtime import build_twist_message
 from navida_deploy.ros2_bridge import NavidaRos2Gateway
+from navida_deploy.targeting import target_metadata_to_velocity_command
 from navida_deploy.twist_bridge import Twist2D, velocity_command_to_twist2d
 
 
@@ -34,6 +35,13 @@ class NavidaRemoteController:
                 self.declare_parameter("max_angular_z", 0.45)
                 self.declare_parameter("command_timeout_s", 0.5)
                 self.declare_parameter("min_inference_period_s", 0.5)
+                self.declare_parameter("visual_servo_enabled", True)
+                self.declare_parameter("target_forward_speed", 0.1)
+                self.declare_parameter("target_turn_gain", 0.8)
+                self.declare_parameter("target_max_angular_z", 0.25)
+                self.declare_parameter("target_center_deadband", 0.1)
+                self.declare_parameter("target_stop_area", 0.3)
+                self.declare_parameter("target_min_confidence", 0.2)
 
                 self._twist_type = Twist
                 self._instruction = str(self.get_parameter("instruction").value)
@@ -75,6 +83,11 @@ class NavidaRemoteController:
                     return
 
                 self._step_index += 1
+                visual_command = self._visual_servo_command(response)
+                if visual_command is not None:
+                    self._publish_velocity_pulse(visual_command)
+                    return
+
                 commands = response_to_velocity_commands(
                     response,
                     forward_speed=float(self.get_parameter("forward_speed").value),
@@ -87,6 +100,20 @@ class NavidaRemoteController:
                     self._publish_stop()
                     return
                 self._publish_velocity_pulse(commands[0])
+
+            def _visual_servo_command(self, response):
+                if not bool(self.get_parameter("visual_servo_enabled").value):
+                    return None
+                return target_metadata_to_velocity_command(
+                    response.metadata,
+                    forward_speed=float(self.get_parameter("target_forward_speed").value),
+                    turn_gain=float(self.get_parameter("target_turn_gain").value),
+                    max_angular_z=float(self.get_parameter("target_max_angular_z").value),
+                    center_deadband=float(self.get_parameter("target_center_deadband").value),
+                    stop_area=float(self.get_parameter("target_stop_area").value),
+                    min_confidence=float(self.get_parameter("target_min_confidence").value),
+                    duration_s=float(self.get_parameter("step_duration_s").value),
+                )
 
             def _on_watchdog_timer(self) -> None:
                 if self._watchdog.expired(time.monotonic()):

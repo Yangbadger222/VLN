@@ -7,7 +7,7 @@ This repo prepares a Jetson vehicle runtime that sends camera frames to a remote
 1. Jetson camera node publishes `/navida/camera/image_raw`.
 2. Jetson controller posts image + instruction to `http://REMOTE_INFERENCE_HOST:50051/v1/infer`.
 3. The 4070 service runs the NaVIDA backend and returns action chunks.
-4. Jetson maps actions to clamped `Twist` commands on `/cmd_vel`.
+4. Jetson prefers VLM target metadata for visual servoing, then falls back to action chunks.
 5. `serial_twistctl` subscribes `/cmd_vel` and writes STM32 serial commands like `vcx=0.200,wc=0.800`.
 
 The copied chassis bridge lives under `ros2_ws/src/sensor_drivers/serial_twistctl`, with its local `serial` dependency in `ros2_ws/src/sensor_drivers/serial`.
@@ -90,6 +90,18 @@ If `/dev/serial_twistctl` does not exist yet, launch with the actual device, for
 - `max_angular_z: 0.45`
 - `command_timeout_s: 0.5`
 - every non-stop command is followed by an explicit zero `Twist` after `step_duration_s`
+- `visual_servo_enabled: true`
+- `target_forward_speed: 0.1`
+- `target_max_angular_z: 0.25`
+- `target_stop_area: 0.3`
 - inference failure immediately publishes zero `Twist`
 
 Tune these in `ros2_ws/src/navida_vehicle/config/navida_jetson.yaml` or through launch arguments.
+
+For semantic goals such as "go to the box/chair/door", the 4070 backend asks the VLM to return target metadata:
+
+```json
+{"target":{"visible":true,"center_x":0.50,"area":0.10,"confidence":0.80},"actions":["forward"]}
+```
+
+When this metadata is present, Jetson uses `center_x` and `area` to turn slowly toward the target, drive when centered, and stop when the target is close. If metadata is missing, the controller falls back to the older discrete action output.

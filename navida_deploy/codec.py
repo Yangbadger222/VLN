@@ -58,6 +58,7 @@ def response_to_dict(response: InferenceResponse) -> dict:
             for chunk in response.chunks
         ],
         "final": response.final,
+        "metadata": response.metadata,
     }
 
 
@@ -75,4 +76,5 @@ def response_from_dict(payload: dict) -> InferenceResponse:
             for chunk in payload.get("chunks", [])
         ],
         final=payload.get("final", True),
+        metadata=dict(payload.get("metadata") or {}),
     )

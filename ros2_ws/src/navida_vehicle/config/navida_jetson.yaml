@@ -21,6 +21,13 @@ navida_remote_controller:
     max_angular_z: 0.45
     command_timeout_s: 0.5
     min_inference_period_s: 0.5
+    visual_servo_enabled: true
+    target_forward_speed: 0.1
+    target_turn_gain: 0.8
+    target_max_angular_z: 0.25
+    target_center_deadband: 0.1
+    target_stop_area: 0.3
+    target_min_confidence: 0.2
 
 serial_twistctl_node:
   ros__parameters:

@@ -1,4 +1,4 @@
-from navida_deploy.hf_backend import HuggingFaceQwen25VLBackend, parse_action_text
+from navida_deploy.hf_backend import HuggingFaceQwen25VLBackend, parse_action_text, parse_target_metadata
 from navida_deploy.messages import InferenceRequest, Observation
 
 
@@ -55,3 +55,19 @@ def test_hf_backend_infer_uses_generated_action_text():
     assert response.session_id == "s1"
     assert response.step_index == 2
     assert [chunk.action for chunk in response.chunks] == ["forward", "turn_right"]
+
+
+def test_parse_target_metadata_extracts_json_target():
+    metadata = parse_target_metadata(
+        '{"target": {"visible": true, "center_x": 0.75, "area": 0.12, "confidence": 0.8}, '
+        '"actions": ["turn_right"]}'
+    )
+
+    assert metadata == {
+        "target": {
+            "visible": True,
+            "center_x": 0.75,
+            "area": 0.12,
+            "confidence": 0.8,
+        }
+    }

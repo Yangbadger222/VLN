@@ -33,3 +33,4 @@ class InferenceResponse:
     step_index: int
     chunks: list[ActionChunk]
     final: bool = True
+    metadata: dict[str, Any] = field(default_factory=dict)
