@@ -17,6 +17,16 @@ def _decode_bytes(data: str | None) -> bytes | None:
     return base64.b64decode(data.encode("ascii"))
 
 
+def _encode_bytes_list(items: list[bytes]) -> list[str]:
+    return [base64.b64encode(item).decode("ascii") for item in items]
+
+
+def _decode_bytes_list(items: list[str] | None) -> list[bytes]:
+    if not items:
+        return []
+    return [base64.b64decode(item.encode("ascii")) for item in items]
+
+
 def request_to_dict(request: InferenceRequest) -> dict:
     return {
         "session_id": request.session_id,
@@ -25,6 +35,7 @@ def request_to_dict(request: InferenceRequest) -> dict:
         "observation": {
             "image_path": request.observation.image_path,
             "image_bytes": _encode_bytes(request.observation.image_bytes),
+            "history_image_bytes": _encode_bytes_list(request.observation.history_image_bytes),
             "metadata": request.observation.metadata,
         },
     }
@@ -39,6 +50,7 @@ def request_from_dict(payload: dict) -> InferenceRequest:
         observation=Observation(
             image_path=observation.get("image_path"),
             image_bytes=_decode_bytes(observation.get("image_bytes")),
+            history_image_bytes=_decode_bytes_list(observation.get("history_image_bytes")),
             metadata=dict(observation.get("metadata") or {}),
         ),
     )

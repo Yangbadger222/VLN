@@ -28,6 +28,7 @@ def generate_launch_description() -> LaunchDescription:
     max_angular_z = LaunchConfiguration("max_angular_z")
     command_timeout_s = LaunchConfiguration("command_timeout_s")
     inference_timeout_s = LaunchConfiguration("inference_timeout_s")
+    history_size = LaunchConfiguration("history_size")
     visual_servo_enabled = LaunchConfiguration("visual_servo_enabled")
     target_forward_speed = LaunchConfiguration("target_forward_speed")
     target_turn_gain = LaunchConfiguration("target_turn_gain")
@@ -56,6 +57,7 @@ def generate_launch_description() -> LaunchDescription:
             _arg("max_angular_z", "0.45", "Angular speed clamp in rad/s"),
             _arg("command_timeout_s", "0.5", "Publish zero Twist after this many seconds without command"),
             _arg("inference_timeout_s", "20.0", "HTTP timeout for one remote inference request"),
+            _arg("history_size", "4", "Number of prior compressed frames sent to the NaVIDA backend"),
             _arg("visual_servo_enabled", "true", "Use target metadata from the VLM for visual servoing"),
             _arg("target_forward_speed", "0.1", "Visual servo forward speed in m/s"),
             _arg("target_turn_gain", "0.8", "Visual servo normalized center error gain"),
@@ -111,6 +113,7 @@ def generate_launch_description() -> LaunchDescription:
                         "max_linear_x": ParameterValue(max_linear_x, value_type=float),
                         "max_angular_z": ParameterValue(max_angular_z, value_type=float),
                         "command_timeout_s": ParameterValue(command_timeout_s, value_type=float),
+                        "history_size": ParameterValue(history_size, value_type=int),
                         "visual_servo_enabled": ParameterValue(visual_servo_enabled, value_type=bool),
                         "target_forward_speed": ParameterValue(target_forward_speed, value_type=float),
                         "target_turn_gain": ParameterValue(target_turn_gain, value_type=float),

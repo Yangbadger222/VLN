@@ -19,6 +19,7 @@ class HuggingFaceQwen25VLBackend:
     load_in_4bit: bool = True
     target_detector_model_id: str | None = None
     target_detector_threshold: float = 0.1
+    target_detector_fallback: bool = False
 
     _model: Any | None = None
     _processor: Any | None = None
@@ -91,8 +92,9 @@ class HuggingFaceQwen25VLBackend:
 
     def infer(self, request: InferenceRequest) -> InferenceResponse:
         model, processor = self._get_model_and_processor()
-        image = _observation_to_image(request)
-        messages = build_navida_messages(request, image=image)
+        images = _observation_to_images(request)
+        image = images[-1]
+        messages = build_navida_messages(request, images=images)
         text = processor.apply_chat_template(
             messages,
             tokenize=False,
@@ -100,7 +102,7 @@ class HuggingFaceQwen25VLBackend:
         )
         inputs = processor(
             text=[text],
-            images=[image],
+            images=images,
             padding=True,
             return_tensors="pt",
         ).to(self.input_device)
@@ -117,7 +119,7 @@ class HuggingFaceQwen25VLBackend:
             clean_up_tokenization_spaces=False,
         )[0]
         metadata = parse_target_metadata(generated_text)
-        if not metadata:
+        if not metadata and self.target_detector_fallback:
             metadata = self.detect_target(request, image)
         return InferenceResponse(
             session_id=request.session_id,
@@ -146,34 +148,39 @@ class HuggingFaceQwen25VLBackend:
         )
 
 
-def build_navida_messages(request: InferenceRequest, image: Any | None = None) -> list[dict[str, Any]]:
+def build_navida_messages(
+    request: InferenceRequest,
+    images: list[Any] | None = None,
+    image: Any | None = None,
+) -> list[dict[str, Any]]:
     instruction = request.instruction or "Navigate safely using the current camera view."
+    observation_images = images or ([image] if image is not None else _observation_to_images(request))
     prompt = (
         "You are controlling a small ground robot. "
-        "Find the navigation target described by the instruction in the image. "
-        "Return JSON exactly like "
-        "{\"target\":{\"visible\":true,\"center_x\":0.50,\"area\":0.10,\"confidence\":0.80},"
-        "\"actions\":[\"forward\"]}. "
-        "Use center_x from 0.0 left to 1.0 right. Use area as the target bounding box area "
-        "divided by image area. If the target is not visible, set visible false and actions [\"stop\"]. "
-        "Choose actions only from: forward, turn_left, turn_right, stop. "
+        "Use the historical observations followed by the current observation to decide the next move. "
+        "Return compact JSON exactly like "
+        "{\"actions\":[{\"action\":\"forward\",\"repeat\":1}]}. "
+        "Use action chunks only from: forward, turn_left, turn_right, stop. "
+        "Use repeat for short repeated chunks when needed. "
         f"Navigation instruction: {instruction}"
     )
+    content = [{"type": "image", "image": item} for item in observation_images]
+    content.append({"type": "text", "text": prompt})
     return [
         {
             "role": "user",
-            "content": [
-                {"type": "image", "image": image if image is not None else _observation_to_image(request)},
-                {"type": "text", "text": prompt},
-            ],
+            "content": content,
         }
     ]
 
 
 def parse_action_text(text: str) -> list[ActionChunk]:
-    actions = _extract_actions_from_json(text) or _extract_actions_from_text(text)
+    chunks = _extract_action_chunks_from_json(text)
+    if chunks:
+        return chunks
+    actions = _extract_actions_from_text(text)
     if not actions:
-        actions = ["stop"]
+        return chunk_atomic_actions(["stop"], merge_probability=1.0, rng=lambda: 0.0)
     return chunk_atomic_actions(actions, merge_probability=1.0, rng=lambda: 0.0)
 
 
@@ -277,15 +284,27 @@ def target_candidate_labels(label: str) -> list[str]:
     return list(dict.fromkeys(candidates))
 
 
-def _extract_actions_from_json(text: str) -> list[str]:
+def _extract_action_chunks_from_json(text: str) -> list[ActionChunk]:
     try:
         payload = json.loads(_slice_json_object(text))
     except (ValueError, TypeError, json.JSONDecodeError):
         return []
     raw_actions = payload.get("actions", [])
-    if isinstance(raw_actions, str):
+    if isinstance(raw_actions, (str, dict)):
         raw_actions = [raw_actions]
-    return [_normalize_action(str(action)) for action in raw_actions if _normalize_action(str(action))]
+    chunks: list[ActionChunk] = []
+    for raw in raw_actions:
+        score = None
+        repeat = 1
+        if isinstance(raw, dict):
+            action = _normalize_action(str(raw.get("action") or raw.get("name") or ""))
+            repeat = _positive_int(raw.get("repeat"), default=1)
+            score = _number_or_none(raw.get("score"))
+        else:
+            action = _normalize_action(str(raw))
+        if action:
+            chunks.append(ActionChunk(index=len(chunks), action=action, repeat=repeat, score=score))
+    return chunks
 
 
 def _extract_actions_from_text(text: str) -> list[str]:
@@ -321,6 +340,14 @@ def _normalize_action(action: str) -> str:
     return ""
 
 
+def _positive_int(value: Any, default: int = 1) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(1, parsed)
+
+
 def _number_or_none(value: Any) -> float | None:
     if value is None:
         return None
@@ -338,18 +365,43 @@ def _slice_json_object(text: str) -> str:
     return text[start : end + 1]
 
 
+def _observation_to_images(request: InferenceRequest):
+    images = [_decode_observation_image(item) for item in request.observation.history_image_bytes if item]
+    current = _decode_observation_image(request.observation.image_bytes)
+    if current is not None:
+        images.append(current)
+    if images:
+        return images
+    if request.observation.image_path:
+        try:
+            from PIL import Image
+        except ImportError as exc:  # pragma: no cover
+            raise RuntimeError("Pillow is required to decode image observations") from exc
+        return [Image.open(request.observation.image_path).convert("RGB")]
+    return [_blank_image()]
+
+
 def _observation_to_image(request: InferenceRequest):
+    return _observation_to_images(request)[-1]
+
+
+def _decode_observation_image(image_bytes: bytes | None):
+    if not image_bytes:
+        return None
     try:
         from PIL import Image
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("Pillow is required to decode image observations") from exc
 
-    observation = request.observation
-    if observation.image_bytes:
-        try:
-            return Image.open(BytesIO(observation.image_bytes)).convert("RGB")
-        except Exception:
-            return Image.new("RGB", (1, 1), color=(0, 0, 0))
-    if observation.image_path:
-        return Image.open(observation.image_path).convert("RGB")
+    try:
+        return Image.open(BytesIO(image_bytes)).convert("RGB")
+    except Exception:
+        return Image.new("RGB", (1, 1), color=(0, 0, 0))
+
+
+def _blank_image():
+    try:
+        from PIL import Image
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError("Pillow is required to decode image observations") from exc
     return Image.new("RGB", (1, 1), color=(0, 0, 0))

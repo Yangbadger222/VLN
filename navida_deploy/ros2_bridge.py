@@ -93,8 +93,10 @@ class NavidaRos2Gateway:
         instruction: str,
         image_msg: Any,
         target_label: str = "",
+        history_image_bytes: list[bytes] | None = None,
     ) -> InferenceResponse:
         observation = ros_image_to_observation(image_msg)
+        observation.history_image_bytes = list(history_image_bytes or [])
         if target_label:
             observation.metadata["target_label"] = target_label
         request = build_request(

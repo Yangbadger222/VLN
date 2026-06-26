@@ -8,6 +8,7 @@ from typing import Any
 class Observation:
     image_path: str | None = None
     image_bytes: bytes | None = None
+    history_image_bytes: list[bytes] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
 
 

@@ -90,3 +90,34 @@ def test_ros2_gateway_posts_instruction_and_image_message():
     assert captured["request"].observation.image_bytes.startswith(b"\xff\xd8")
     assert captured["request"].observation.metadata["transport_encoding"] == "jpeg"
     assert response.chunks[0].action == "forward"
+
+
+def test_ros2_gateway_posts_history_images():
+    captured = {}
+
+    def fake_post(url, request):
+        captured["request"] = request
+        return InferenceResponse(
+            session_id=request.session_id,
+            step_index=request.step_index,
+            chunks=[ActionChunk(index=0, action="forward")],
+        )
+
+    gateway = NavidaRos2Gateway("http://127.0.0.1:50051/v1/infer", post=fake_post)
+    image_msg = SimpleNamespace(
+        data=b"\xaa\xbb",
+        height=1,
+        width=2,
+        encoding="mono8",
+        step=2,
+    )
+
+    gateway.infer(
+        session_id="session-1",
+        step_index=5,
+        instruction="use history",
+        image_msg=image_msg,
+        history_image_bytes=[b"old-frame"],
+    )
+
+    assert captured["request"].observation.history_image_bytes == [b"old-frame"]

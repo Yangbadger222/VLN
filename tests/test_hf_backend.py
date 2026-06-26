@@ -1,5 +1,6 @@
 from navida_deploy.hf_backend import (
     HuggingFaceQwen25VLBackend,
+    build_navida_messages,
     detection_to_target_metadata,
     parse_action_text,
     parse_target_metadata,
@@ -11,6 +12,12 @@ def test_parse_action_text_extracts_json_actions():
     chunks = parse_action_text('{"actions": ["forward", "turn_left", "stop"]}')
 
     assert [chunk.action for chunk in chunks] == ["forward", "turn_left", "stop"]
+
+
+def test_parse_action_text_extracts_json_action_chunks_with_repeats():
+    chunks = parse_action_text('{"actions": [{"action": "forward", "repeat": 2}, {"action": "turn_left"}]}')
+
+    assert [(chunk.action, chunk.repeat) for chunk in chunks] == [("forward", 2), ("turn_left", 1)]
 
 
 def test_parse_action_text_normalizes_plain_language_actions():
@@ -60,6 +67,64 @@ def test_hf_backend_infer_uses_generated_action_text():
     assert response.session_id == "s1"
     assert response.step_index == 2
     assert [chunk.action for chunk in response.chunks] == ["forward", "turn_right"]
+
+
+def test_build_navida_messages_includes_history_and_current_images():
+    request = InferenceRequest(
+        session_id="s-history",
+        step_index=1,
+        instruction="go to the goal",
+        observation=Observation(
+            image_bytes=b"not-a-real-current-image",
+            history_image_bytes=[b"not-a-real-old-1", b"not-a-real-old-2"],
+        ),
+    )
+
+    messages = build_navida_messages(request)
+    content = messages[0]["content"]
+
+    assert [item["type"] for item in content].count("image") == 3
+    assert "historical observations" in content[-1]["text"].lower()
+
+
+def test_hf_backend_does_not_use_target_detector_without_fallback_enabled():
+    class FakeBatch(dict):
+        def to(self, device):
+            return self
+
+    class FakeProcessor:
+        def apply_chat_template(self, messages, tokenize, add_generation_prompt):
+            return "prompt"
+
+        def __call__(self, **kwargs):
+            return FakeBatch(input_ids=[[1]])
+
+        def batch_decode(self, generated_ids, skip_special_tokens, clean_up_tokenization_spaces):
+            return ['{"actions": ["forward"]}']
+
+    class FakeModel:
+        def generate(self, **kwargs):
+            return [[1, 2]]
+
+    class FailingDetector:
+        def __call__(self, *args, **kwargs):
+            raise AssertionError("target detector should be opt-in fallback only")
+
+    backend = HuggingFaceQwen25VLBackend(input_device="cuda", target_detector_model_id="fake-detector")
+    backend.load = lambda: (FakeModel(), FakeProcessor())
+    backend._target_detector = FailingDetector()
+
+    response = backend.infer(
+        InferenceRequest(
+            session_id="s1",
+            step_index=0,
+            instruction="go forward",
+            observation=Observation(image_bytes=b"not-a-real-image", metadata={"target_label": "chair"}),
+        )
+    )
+
+    assert [chunk.action for chunk in response.chunks] == ["forward"]
+    assert response.metadata == {}
 
 
 def test_parse_target_metadata_extracts_json_target():

@@ -5,9 +5,9 @@ This repo prepares a Jetson vehicle runtime that sends camera frames to a remote
 ## Runtime Chain
 
 1. Jetson camera node publishes `/navida/camera/image_raw`.
-2. Jetson controller posts image + instruction to `http://REMOTE_INFERENCE_HOST:50051/v1/infer`.
+2. Jetson controller posts recent camera history + current image + instruction to `http://REMOTE_INFERENCE_HOST:50051/v1/infer`.
 3. The 4070 service runs the NaVIDA backend and returns action chunks.
-4. Jetson prefers VLM target metadata for visual servoing, then falls back to action chunks.
+4. Jetson executes the first safe action chunk as a bounded `/cmd_vel` pulse.
 5. `serial_twistctl` subscribes `/cmd_vel` and writes STM32 serial commands like `vcx=0.200,wc=0.800`.
 
 The copied chassis bridge lives under `ros2_ws/src/sensor_drivers/serial_twistctl`, with its local `serial` dependency in `ros2_ws/src/sensor_drivers/serial`.
@@ -39,7 +39,7 @@ source .venv/bin/activate
 python -m pip install -U pip
 python -m pip install --index-url https://download.pytorch.org/whl/cu121 torch torchvision torchaudio
 python -m pip install -e ".[server]"
-python scripts/run_inference_server.py --backend hf --host 0.0.0.0 --port 50051 --model-id waynechu/NaVIDA --device cuda --load-in-4bit --target-detector-model-id google/owlvit-base-patch32
+python scripts/run_inference_server.py --backend hf --host 0.0.0.0 --port 50051 --model-id waynechu/NaVIDA --device cuda --load-in-4bit
 ```
 
 Health check:
@@ -69,12 +69,12 @@ ros2 launch navida_vehicle navida_jetson.launch.py \
   inference_url:=http://REMOTE_INFERENCE_HOST:50051/v1/infer \
   serial_port:=/dev/serial_twistctl \
   instruction:="Go to the target object in front of you. Approach slowly and stop when close." \
-  target_label:=box
+  history_size:=4
 ```
 
 `camera_device` now defaults to `auto`, which probes `/dev/video0` through `/dev/video5` and picks the first device that can return a frame. Override it explicitly with `camera_device:=/dev/video4` when you already know the correct capture node.
 
-The Jetson-side bridge now JPEG-compresses ROS image frames before posting them to the 4070. That makes the payload a real decodable image for the HF backend and keeps the request size low enough for Tailscale links. `inference_timeout_s` defaults to `20.0` and can be raised further during first on-car tests.
+The Jetson-side bridge now JPEG-compresses ROS image frames before posting them to the 4070. It also sends a rolling history of prior compressed frames (`history_size`, default `4`) plus the current frame so NaVIDA can reason over observation history instead of a single still image. `inference_timeout_s` defaults to `20.0` and can be raised further during first on-car tests.
 
 Jetson uses ROS 2 Humble's `colcon-core`, which currently requires `setuptools<80`. Keep the user-level `setuptools>=68,<80` pin above; it supports editable installs without breaking `colcon build`.
 
@@ -96,16 +96,36 @@ If `/dev/serial_twistctl` does not exist yet, launch with the actual device, for
 - `target_forward_speed: 0.1`
 - `target_max_angular_z: 0.25`
 - `target_stop_area: 0.3`
+- `history_size: 4`
 - inference failure immediately publishes zero `Twist`
 
 Tune these in `ros2_ws/src/navida_vehicle/config/navida_jetson.yaml` or through launch arguments.
 
-For semantic goals such as "go to the box/chair/door", the 4070 backend asks the VLM to return target metadata:
+## Paper-Faithful NaVIDA Mode
+
+By default, the 4070 service asks NaVIDA to use historical observations plus the current observation and return compact action chunks:
+
+```json
+{"actions":[{"action":"forward","repeat":1}]}
+```
+
+The Jetson executes action chunks through the existing speed clamps and pulse-stop safety layer. This is the primary runtime path for paper-faithful VLN/VLA behavior.
+
+## Optional Target Detector Fallback
+
+For semantic goal debugging such as "go to the box/chair/door", you can opt into open-vocabulary detector fallback:
+
+```bash
+python scripts/run_inference_server.py --backend hf --host 0.0.0.0 --port 50051 \
+  --model-id waynechu/NaVIDA --device cuda --load-in-4bit \
+  --target-detector-model-id google/owlvit-base-patch32 \
+  --target-detector-fallback
+```
+
+When fallback is enabled and target metadata is present, Jetson can use visual servoing metadata:
 
 ```json
 {"target":{"visible":true,"center_x":0.50,"area":0.10,"confidence":0.80},"actions":["forward"]}
 ```
 
-When this metadata is present, Jetson uses `center_x` and `area` to turn slowly toward the target, drive when centered, and stop when the target is close. If metadata is missing, the controller falls back to the older discrete action output.
-
-NaVIDA may return only discrete actions for some prompts, so the 4070 service also supports an open-vocabulary detector through `--target-detector-model-id` using OWL-ViT by default. Pass `target_label:=box`, `target_label:=chair`, `target_label:=door`, etc. from the Jetson launch command to make the detector look for the right object class.
+When this metadata is present, Jetson uses `center_x` and `area` to turn slowly toward the target, drive when centered, and stop when the target is close. If metadata is missing, the controller falls back to action chunks.

@@ -5,9 +5,10 @@ from functools import partial
 from uuid import uuid4
 
 from navida_deploy.control import CommandWatchdog, response_to_velocity_commands, velocity_command_to_pulse
+from navida_deploy.frame_history import FrameHistory
 from navida_deploy.http_client import post_inference
 from navida_deploy.rclpy_runtime import build_twist_message
-from navida_deploy.ros2_bridge import NavidaRos2Gateway
+from navida_deploy.ros2_bridge import NavidaRos2Gateway, ros_image_to_observation
 from navida_deploy.targeting import target_metadata_to_velocity_command
 from navida_deploy.twist_bridge import Twist2D, velocity_command_to_twist2d
 
@@ -36,6 +37,7 @@ class NavidaRemoteController:
                 self.declare_parameter("max_angular_z", 0.45)
                 self.declare_parameter("command_timeout_s", 0.5)
                 self.declare_parameter("min_inference_period_s", 0.5)
+                self.declare_parameter("history_size", 4)
                 self.declare_parameter("visual_servo_enabled", True)
                 self.declare_parameter("target_forward_speed", 0.1)
                 self.declare_parameter("target_turn_gain", 0.8)
@@ -54,6 +56,7 @@ class NavidaRemoteController:
                 self._step_index = 0
                 self._last_inference_time_s = 0.0
                 self._min_inference_period_s = float(self.get_parameter("min_inference_period_s").value)
+                self._frame_history = FrameHistory(int(self.get_parameter("history_size").value))
                 self._watchdog = CommandWatchdog(timeout_s=float(self.get_parameter("command_timeout_s").value))
 
                 cmd_vel_topic = str(self.get_parameter("cmd_vel_topic").value)
@@ -70,6 +73,8 @@ class NavidaRemoteController:
                 if now_s - self._last_inference_time_s < self._min_inference_period_s:
                     return
                 self._last_inference_time_s = now_s
+                current_observation = ros_image_to_observation(image_msg)
+                history_image_bytes = self._frame_history.snapshot()
 
                 try:
                     response = self._gateway.infer(
@@ -78,12 +83,15 @@ class NavidaRemoteController:
                         instruction=self._instruction,
                         image_msg=image_msg,
                         target_label=str(self.get_parameter("target_label").value),
+                        history_image_bytes=history_image_bytes,
                     )
                 except Exception as exc:
                     self.get_logger().error(f"remote inference failed: {exc}")
+                    self._frame_history.append(current_observation.image_bytes)
                     self._publish_stop()
                     return
 
+                self._frame_history.append(current_observation.image_bytes)
                 self._step_index += 1
                 visual_command = self._visual_servo_command(response)
                 if visual_command is not None:

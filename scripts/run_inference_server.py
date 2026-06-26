@@ -13,6 +13,7 @@ def build_backend(
     device: str = "cuda",
     load_in_4bit: bool = True,
     target_detector_model_id: str | None = "google/owlvit-base-patch32",
+    target_detector_fallback: bool = False,
 ) -> InferenceBackend:
     if kind == "mock":
         return MockNaVIDABackend()
@@ -23,6 +24,7 @@ def build_backend(
             input_device=device,
             load_in_4bit=load_in_4bit,
             target_detector_model_id=target_detector_model_id,
+            target_detector_fallback=target_detector_fallback,
         )
     raise ValueError(f"Unsupported backend kind: {kind}")
 
@@ -36,6 +38,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--load-in-4bit", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--target-detector-model-id", default="google/owlvit-base-patch32")
+    parser.add_argument(
+        "--target-detector-fallback",
+        action="store_true",
+        help="Use the open-vocabulary detector only when NaVIDA does not return target metadata.",
+    )
     return parser.parse_args()
 
 
@@ -47,6 +54,7 @@ def main() -> None:
         device=args.device,
         load_in_4bit=args.load_in_4bit,
         target_detector_model_id=args.target_detector_model_id or None,
+        target_detector_fallback=args.target_detector_fallback,
     )
     server = create_server((args.host, args.port), backend=backend)
     print(f"listening on http://{args.host}:{args.port}/v1/infer with backend={args.backend}")
