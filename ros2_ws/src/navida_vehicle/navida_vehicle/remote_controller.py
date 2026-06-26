@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from functools import partial
 from uuid import uuid4
 
 from navida_deploy.control import CommandWatchdog, response_to_velocity_commands
@@ -23,6 +24,7 @@ class NavidaRemoteController:
                 self.declare_parameter("image_topic", "/navida/camera/image_raw")
                 self.declare_parameter("cmd_vel_topic", "/cmd_vel")
                 self.declare_parameter("inference_url", "http://REMOTE_INFERENCE_HOST:50051/v1/infer")
+                self.declare_parameter("inference_timeout_s", 20.0)
                 self.declare_parameter("instruction", "Navigate safely with the front camera.")
                 self.declare_parameter("session_id", "")
                 self.declare_parameter("forward_speed", 0.2)
@@ -36,7 +38,10 @@ class NavidaRemoteController:
                 self._twist_type = Twist
                 self._instruction = str(self.get_parameter("instruction").value)
                 self._session_id = str(self.get_parameter("session_id").value) or f"jetson-{uuid4().hex[:8]}"
-                self._gateway = NavidaRos2Gateway(str(self.get_parameter("inference_url").value), post=post_inference)
+                self._gateway = NavidaRos2Gateway(
+                    str(self.get_parameter("inference_url").value),
+                    post=partial(post_inference, timeout_s=float(self.get_parameter("inference_timeout_s").value)),
+                )
                 self._step_index = 0
                 self._last_inference_time_s = 0.0
                 self._min_inference_period_s = float(self.get_parameter("min_inference_period_s").value)

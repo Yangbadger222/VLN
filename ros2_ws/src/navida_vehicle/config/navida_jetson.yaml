@@ -12,6 +12,7 @@ navida_remote_controller:
     image_topic: /navida/camera/image_raw
     cmd_vel_topic: /cmd_vel
     inference_url: http://REMOTE_INFERENCE_HOST:50051/v1/infer
+    inference_timeout_s: 20.0
     instruction: Navigate safely with the front camera.
     forward_speed: 0.2
     turn_speed: 0.8

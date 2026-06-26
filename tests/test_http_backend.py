@@ -1,5 +1,7 @@
+import json
 from threading import Thread
 
+import navida_deploy.http_client as http_client
 from navida_deploy.http_client import post_inference
 from navida_deploy.http_service import create_server
 from navida_deploy.messages import ActionChunk, InferenceRequest, InferenceResponse, Observation
@@ -33,3 +35,46 @@ def test_http_service_uses_injected_backend():
         server.shutdown()
         thread.join()
 
+
+def test_post_inference_uses_configured_timeout():
+    captured = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return json.dumps(
+                {
+                    "session_id": "demo",
+                    "step_index": 0,
+                    "chunks": [{"index": 0, "action": "forward", "repeat": 1}],
+                    "final": True,
+                }
+            ).encode("utf-8")
+
+    original_urlopen = http_client.urlopen
+
+    def fake_urlopen(request, timeout):
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    http_client.urlopen = fake_urlopen
+    try:
+        response = post_inference(
+            "http://127.0.0.1:50051/v1/infer",
+            InferenceRequest(
+                session_id="demo",
+                step_index=0,
+                observation=Observation(image_bytes=b"raw"),
+            ),
+            timeout_s=12.5,
+        )
+    finally:
+        http_client.urlopen = original_urlopen
+
+    assert captured["timeout"] == 12.5
+    assert response.session_id == "demo"

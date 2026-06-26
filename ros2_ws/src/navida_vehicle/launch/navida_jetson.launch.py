@@ -26,6 +26,7 @@ def generate_launch_description() -> LaunchDescription:
     max_linear_x = LaunchConfiguration("max_linear_x")
     max_angular_z = LaunchConfiguration("max_angular_z")
     command_timeout_s = LaunchConfiguration("command_timeout_s")
+    inference_timeout_s = LaunchConfiguration("inference_timeout_s")
 
     return LaunchDescription(
         [
@@ -45,6 +46,7 @@ def generate_launch_description() -> LaunchDescription:
             _arg("max_linear_x", "0.3", "Linear speed clamp in m/s"),
             _arg("max_angular_z", "1.0", "Angular speed clamp in rad/s"),
             _arg("command_timeout_s", "0.75", "Publish zero Twist after this many seconds without command"),
+            _arg("inference_timeout_s", "20.0", "HTTP timeout for one remote inference request"),
             Node(
                 package="serial_twistctl",
                 executable="serial_twistctl_node",
@@ -86,6 +88,7 @@ def generate_launch_description() -> LaunchDescription:
                         "cmd_vel_topic": cmd_vel_topic,
                         "inference_url": inference_url,
                         "instruction": instruction,
+                        "inference_timeout_s": ParameterValue(inference_timeout_s, value_type=float),
                         "forward_speed": ParameterValue(forward_speed, value_type=float),
                         "turn_speed": ParameterValue(turn_speed, value_type=float),
                         "max_linear_x": ParameterValue(max_linear_x, value_type=float),

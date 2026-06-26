@@ -71,6 +71,8 @@ ros2 launch navida_vehicle navida_jetson.launch.py \
 
 `camera_device` now defaults to `auto`, which probes `/dev/video0` through `/dev/video5` and picks the first device that can return a frame. Override it explicitly with `camera_device:=/dev/video4` when you already know the correct capture node.
 
+The Jetson-side bridge now JPEG-compresses ROS image frames before posting them to the 4070. That makes the payload a real decodable image for the HF backend and keeps the request size low enough for Tailscale links. `inference_timeout_s` defaults to `20.0` and can be raised further during first on-car tests.
+
 If `/dev/serial_twistctl` does not exist yet, launch with the actual device, for example `serial_port:=/dev/ttyUSB0`. If turning is reversed, add `angular_z_scale:=-1.0`.
 
 ## ROS 2 Topics
