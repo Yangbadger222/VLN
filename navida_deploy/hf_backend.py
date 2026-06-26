@@ -205,7 +205,10 @@ def detection_to_target_metadata(
     valid = [detection for detection in detections if isinstance(detection, dict)]
     if not valid:
         return {"target": {"visible": False, "center_x": None, "area": None, "confidence": 0.0}}
-    best = max(valid, key=lambda detection: float(detection.get("score") or 0.0))
+    best = max(
+        valid,
+        key=lambda detection: _detection_selection_score(detection, image_width, image_height),
+    )
     box = best.get("box") or {}
     try:
         xmin = float(box["xmin"])
@@ -224,6 +227,22 @@ def detection_to_target_metadata(
             "confidence": round(float(best.get("score") or 0.0), 6),
         }
     }
+
+
+def _detection_selection_score(detection: dict[str, Any], image_width: int, image_height: int) -> float:
+    box = detection.get("box") or {}
+    try:
+        xmin = float(box["xmin"])
+        ymin = float(box["ymin"])
+        xmax = float(box["xmax"])
+        ymax = float(box["ymax"])
+    except (KeyError, TypeError, ValueError):
+        return -1.0
+    score = float(detection.get("score") or 0.0)
+    center_x = ((xmin + xmax) / 2.0) / max(1.0, float(image_width))
+    area = max(0.0, xmax - xmin) * max(0.0, ymax - ymin) / max(1.0, float(image_width * image_height))
+    centered_bonus = 1.0 - min(1.0, abs(center_x - 0.5) * 2.0)
+    return score + area + 0.15 * centered_bonus
 
 
 def target_label_from_request(request: InferenceRequest) -> str:

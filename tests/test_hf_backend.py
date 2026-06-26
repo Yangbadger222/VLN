@@ -96,3 +96,17 @@ def test_detection_to_target_metadata_uses_best_box():
             "confidence": 0.9,
         }
     }
+
+
+def test_detection_to_target_metadata_prefers_large_centered_target():
+    metadata = detection_to_target_metadata(
+        [
+            {"score": 0.268, "box": {"xmin": 30, "ymin": 196, "xmax": 96, "ymax": 315}},
+            {"score": 0.254, "box": {"xmin": 190, "ymin": 98, "xmax": 456, "ymax": 401}},
+        ],
+        image_width=640,
+        image_height=480,
+    )
+
+    assert metadata["target"]["center_x"] == 0.504687
+    assert metadata["target"]["area"] == 0.262363
