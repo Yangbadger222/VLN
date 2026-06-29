@@ -25,7 +25,7 @@ class NavidaRemoteController:
                 super().__init__("navida_remote_controller")
                 self.declare_parameter("image_topic", "/navida/camera/image_raw")
                 self.declare_parameter("cmd_vel_topic", "/cmd_vel")
-                self.declare_parameter("inference_url", "http://REMOTE_INFERENCE_HOST:50051/v1/infer")
+                self.declare_parameter("inference_url", "http://127.0.0.1:50051/v1/infer")
                 self.declare_parameter("inference_timeout_s", 20.0)
                 self.declare_parameter("instruction", "Navigate safely with the front camera.")
                 self.declare_parameter("target_label", "")

@@ -5,7 +5,7 @@ This repo prepares a Jetson vehicle runtime that sends camera frames to a remote
 ## Runtime Chain
 
 1. Jetson camera node publishes `/navida/camera/image_raw`.
-2. Jetson controller posts recent camera history + current image + instruction to `http://REMOTE_INFERENCE_HOST:50051/v1/infer`.
+2. Jetson controller posts recent camera history + current image + instruction to your remote inference endpoint.
 3. The 4070 service runs the NaVIDA backend and returns action chunks.
 4. Jetson executes the first safe action chunk as a bounded `/cmd_vel` pulse.
 5. `serial_twistctl` subscribes `/cmd_vel` and writes STM32 serial commands like `vcx=0.200,wc=0.800`.
@@ -29,7 +29,7 @@ python3 -m pytest -q
 
 ## 4070 Inference Host
 
-Host: `user@REMOTE_INFERENCE_HOST`
+Run this on your remote GPU inference host:
 
 ```bash
 git clone https://github.com/Yangbadger222/VLN.git
@@ -52,7 +52,7 @@ Use `--backend mock` first if CUDA/model dependencies are not ready yet.
 
 ## Jetson Vehicle Host
 
-Host: `user@JETSON_HOST`
+Run this on your Jetson vehicle host:
 
 ```bash
 git clone https://github.com/Yangbadger222/VLN.git

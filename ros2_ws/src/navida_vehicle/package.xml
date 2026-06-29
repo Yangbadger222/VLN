@@ -4,7 +4,7 @@
   <name>navida_vehicle</name>
   <version>0.1.0</version>
   <description>Jetson-side ROS 2 camera and remote NaVIDA control nodes.</description>
-  <maintainer email="maintainer@example.com">badger</maintainer>
+  <maintainer email="maintainer@example.com">VLN Team</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_python</buildtool_depend>

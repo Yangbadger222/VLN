@@ -4,7 +4,7 @@
   <name>serial_twistctl</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="maintainer@example.com">jetson</maintainer>
+  <maintainer email="maintainer@example.com">VLN Team</maintainer>
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

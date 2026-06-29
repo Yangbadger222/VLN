@@ -18,7 +18,7 @@ setup(
     ],
     install_requires=["setuptools"],
     zip_safe=True,
-    maintainer="badger",
+    maintainer="VLN Team",
     maintainer_email="maintainer@example.com",
     description="Jetson-side ROS 2 camera and remote NaVIDA control nodes.",
     license="Apache-2.0",

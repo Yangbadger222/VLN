@@ -39,7 +39,7 @@ def generate_launch_description() -> LaunchDescription:
 
     return LaunchDescription(
         [
-            _arg("inference_url", "http://REMOTE_INFERENCE_HOST:50051/v1/infer", "4070 inference endpoint"),
+            _arg("inference_url", "http://127.0.0.1:50051/v1/infer", "Remote inference endpoint"),
             _arg("instruction", "Navigate safely with the front camera.", "Navigation instruction"),
             _arg("target_label", "", "Optional open-vocabulary detector label, e.g. box, chair, door"),
             _arg("image_topic", "/navida/camera/image_raw", "Camera image topic"),
