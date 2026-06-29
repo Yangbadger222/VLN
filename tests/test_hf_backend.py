@@ -26,6 +26,16 @@ def test_parse_action_text_normalizes_plain_language_actions():
     assert [chunk.action for chunk in chunks] == ["forward", "turn_right", "stop"]
 
 
+def test_parse_action_text_extracts_official_distance_and_degree_chunks():
+    chunks = parse_action_text("forward 75 cm, turn left 30 degree, turn right 15 degree")
+
+    assert [(chunk.action, chunk.repeat) for chunk in chunks] == [
+        ("forward", 3),
+        ("turn_left", 2),
+        ("turn_right", 1),
+    ]
+
+
 def test_hf_backend_maps_single_cuda_device_for_accelerate():
     backend = HuggingFaceQwen25VLBackend(device="cuda")
 
@@ -33,6 +43,8 @@ def test_hf_backend_maps_single_cuda_device_for_accelerate():
 
 
 def test_hf_backend_infer_uses_generated_action_text():
+    captured = {}
+
     class FakeBatch(dict):
         def to(self, device):
             self["device"] = device
@@ -43,13 +55,15 @@ def test_hf_backend_infer_uses_generated_action_text():
             return "prompt"
 
         def __call__(self, **kwargs):
+            captured["processor_kwargs"] = kwargs
             return FakeBatch(input_ids=[[1, 2, 3]])
 
         def batch_decode(self, generated_ids, skip_special_tokens, clean_up_tokenization_spaces):
-            return ['{"actions": ["forward", "turn_right"]}']
+            return ["forward 25 cm, turn right 15 degree"]
 
     class FakeModel:
         def generate(self, **kwargs):
+            captured["generate_kwargs"] = kwargs
             return [[1, 2, 3, 4, 5]]
 
     backend = HuggingFaceQwen25VLBackend(input_device="cuda")
@@ -67,6 +81,9 @@ def test_hf_backend_infer_uses_generated_action_text():
     assert response.session_id == "s1"
     assert response.step_index == 2
     assert [chunk.action for chunk in response.chunks] == ["forward", "turn_right"]
+    assert isinstance(captured["processor_kwargs"]["images"][0], list)
+    assert captured["generate_kwargs"]["max_new_tokens"] == 512
+    assert captured["generate_kwargs"]["temperature"] == 0.2
 
 
 def test_build_navida_messages_includes_history_and_current_images():
@@ -81,10 +98,15 @@ def test_build_navida_messages_includes_history_and_current_images():
     )
 
     messages = build_navida_messages(request)
-    content = messages[0]["content"]
+    content = messages[1]["content"]
 
+    assert messages[0]["role"] == "system"
     assert [item["type"] for item in content].count("image") == 3
-    assert "historical observations" in content[-1]["text"].lower()
+    assert content[0]["text"] == (
+        "Imagine you are a robot programmed for navigation tasks. "
+        "You have been given a video of historical observations"
+    )
+    assert content[-1]["text"].startswith(". Your assigned task is: 'go to the goal'. Analyze this series of images")
 
 
 def test_hf_backend_does_not_use_target_detector_without_fallback_enabled():

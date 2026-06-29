@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from io import BytesIO
 from typing import Any
@@ -9,13 +10,28 @@ from .chunking import chunk_atomic_actions
 from .messages import ActionChunk, InferenceRequest, InferenceResponse
 
 
+SYSTEM_PROMPT = "You are a helpful assistant."
+VLN_PROMPT_TEMPLATE = (
+    "Imagine you are a robot programmed for navigation tasks. "
+    "You have been given a video of historical observations and an image of the current observation. "
+    "Your assigned task is: '{}'. Analyze this series of images to decide your next move, "
+    "which could involve turning left or right by a specific degree or moving forward a certain distance."
+)
+OFFICIAL_FORWARD_DISTANCE_CM = 25
+OFFICIAL_TURN_ANGLE_DEGREES = 15
+MAX_PENDING_ACTION_REPEAT = 3
+
+
 @dataclass
 class HuggingFaceQwen25VLBackend:
     model_id: str = "waynechu/NaVIDA"
     device: str = "cuda"
     input_device: str = "cuda"
     trust_remote_code: bool = False
-    max_new_tokens: int = 64
+    max_new_tokens: int = 512
+    temperature: float = 0.2
+    top_p: float = 1.0
+    repetition_penalty: float = 1.05
     load_in_4bit: bool = True
     target_detector_model_id: str | None = None
     target_detector_threshold: float = 0.1
@@ -102,11 +118,19 @@ class HuggingFaceQwen25VLBackend:
         )
         inputs = processor(
             text=[text],
-            images=images,
+            images=_processor_image_inputs(messages, images),
             padding=True,
             return_tensors="pt",
         ).to(self.input_device)
-        generated_ids = model.generate(**inputs, max_new_tokens=self.max_new_tokens)
+        generated_ids = model.generate(
+            **inputs,
+            max_new_tokens=self.max_new_tokens,
+            do_sample=True,
+            temperature=self.temperature,
+            top_p=self.top_p,
+            repetition_penalty=self.repetition_penalty,
+            use_cache=True,
+        )
         input_ids = inputs.get("input_ids")
         if input_ids is not None:
             generated_ids = [
@@ -155,18 +179,28 @@ def build_navida_messages(
 ) -> list[dict[str, Any]]:
     instruction = request.instruction or "Navigate safely using the current camera view."
     observation_images = images or ([image] if image is not None else _observation_to_images(request))
-    prompt = (
-        "You are controlling a small ground robot. "
-        "Use the historical observations followed by the current observation to decide the next move. "
-        "Return compact JSON exactly like "
-        "{\"actions\":[{\"action\":\"forward\",\"repeat\":1}]}. "
-        "Use action chunks only from: forward, turn_left, turn_right, stop. "
-        "Use repeat for short repeated chunks when needed. "
-        f"Navigation instruction: {instruction}"
-    )
-    content = [{"type": "image", "image": item} for item in observation_images]
-    content.append({"type": "text", "text": prompt})
+    prompt = VLN_PROMPT_TEMPLATE.format(instruction)
+    suffix = prompt.split("current observation", 1)[1]
+
+    content = [
+        {
+            "type": "text",
+            "text": (
+                "Imagine you are a robot programmed for navigation tasks. "
+                "You have been given a video of historical observations"
+            ),
+        }
+    ]
+    historical_images = observation_images[:-1] or observation_images[-1:]
+    content.extend({"type": "image", "image": item} for item in historical_images)
+    content.append({"type": "text", "text": "and an image of the current observation"})
+    content.append({"type": "image", "image": observation_images[-1]})
+    content.append({"type": "text", "text": suffix})
     return [
+        {
+            "role": "system",
+            "content": [{"type": "text", "text": SYSTEM_PROMPT}],
+        },
         {
             "role": "user",
             "content": content,
@@ -176,6 +210,9 @@ def build_navida_messages(
 
 def parse_action_text(text: str) -> list[ActionChunk]:
     chunks = _extract_action_chunks_from_json(text)
+    if chunks:
+        return chunks
+    chunks = _extract_official_action_chunks_from_text(text)
     if chunks:
         return chunks
     actions = _extract_actions_from_text(text)
@@ -323,6 +360,50 @@ def _extract_actions_from_text(text: str) -> list[str]:
     return [action for _, action in sorted(ordered)]
 
 
+def _extract_official_action_chunks_from_text(text: str) -> list[ActionChunk]:
+    output_match = re.search(r"<answer>(.*?)</answer>", text, flags=re.IGNORECASE | re.DOTALL)
+    normalized_text = output_match.group(1).strip() if output_match else text.strip()
+    chunks: list[ActionChunk] = []
+    for raw_sub_action in re.split(r",\s*|\bthen\b", normalized_text, flags=re.IGNORECASE):
+        sub_action = raw_sub_action.strip().lower()
+        if not sub_action:
+            continue
+        action = _official_action_name(sub_action)
+        if not action:
+            continue
+        repeat = _repeat_from_official_action(sub_action, action)
+        chunks.append(ActionChunk(index=len(chunks), action=action, repeat=repeat))
+    return chunks
+
+
+def _official_action_name(sub_action: str) -> str:
+    if "stop" in sub_action:
+        return "stop"
+    if "forward" in sub_action:
+        return "forward"
+    if "left" in sub_action:
+        return "turn_left"
+    if "right" in sub_action:
+        return "turn_right"
+    return ""
+
+
+def _repeat_from_official_action(sub_action: str, action: str) -> int:
+    number = _first_number(sub_action)
+    if number is None or action == "stop":
+        return 1
+    if action == "forward":
+        return max(1, min(MAX_PENDING_ACTION_REPEAT, round(number / OFFICIAL_FORWARD_DISTANCE_CM)))
+    return max(1, min(MAX_PENDING_ACTION_REPEAT, round(number / OFFICIAL_TURN_ANGLE_DEGREES)))
+
+
+def _first_number(text: str) -> float | None:
+    match = re.search(r"-?\d+(?:\.\d+)?", text)
+    if match is None:
+        return None
+    return float(match.group())
+
+
 def _normalize_action(action: str) -> str:
     normalized = action.strip().lower().replace("-", "_").replace(" ", "_")
     aliases = {
@@ -338,6 +419,18 @@ def _normalize_action(action: str) -> str:
     if normalized in {"forward", "turn_left", "turn_right", "stop"}:
         return normalized
     return ""
+
+
+def _processor_image_inputs(messages: list[dict[str, Any]], images: list[Any]) -> list[list[Any]]:
+    try:
+        from qwen_vl_utils import process_vision_info
+    except Exception:
+        return [images]
+    try:
+        image_inputs, _ = process_vision_info(messages)
+    except Exception:
+        return [images]
+    return [image_inputs] if image_inputs else [images]
 
 
 def _positive_int(value: Any, default: int = 1) -> int:
