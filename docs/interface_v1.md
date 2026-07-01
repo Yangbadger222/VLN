@@ -1,6 +1,6 @@
-# NaVIDA Deployment HTTP API v1
+# VLN Inference HTTP API v1
 
-This document defines the JSON interface between a vehicle client and a NaVIDA inference service. API v1 uses the version string `"1.0"` and the inference endpoint `POST /v1/infer`.
+This document defines the shared JSON interface between VLN clients and inference backends, including Habitat simulation, ROS 2 vehicle deployment, NaVIDA, and future waypoint-based backends. API v1 uses the version string `"1.0"` and the inference endpoint `POST /v1/infer`.
 
 Requests and responses use `Content-Type: application/json`. A successful inference returns HTTP 200. Failures use the structured error body described below.
 
