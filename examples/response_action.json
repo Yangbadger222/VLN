@@ -1,0 +1,26 @@
+{
+  "api_version": "1.0",
+  "session_id": "warehouse-run-20260701-001",
+  "step_index": 2,
+  "command_type": "action_chunks",
+  "chunks": [
+    {
+      "index": 0,
+      "action": "forward",
+      "repeat": 2,
+      "score": 0.93
+    },
+    {
+      "index": 1,
+      "action": "turn_left",
+      "repeat": 1,
+      "score": 0.81
+    }
+  ],
+  "waypoints": [],
+  "stop": false,
+  "metadata": {
+    "backend": "navida-hf-cuda",
+    "inference_ms": 184.7
+  }
+}

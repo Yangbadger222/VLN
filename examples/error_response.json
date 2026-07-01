@@ -1,0 +1,13 @@
+{
+  "api_version": "1.0",
+  "session_id": "warehouse-run-20260701-001",
+  "step_index": null,
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "step_index must be a non-negative integer",
+    "details": {
+      "field": "step_index",
+      "value": -1
+    }
+  }
+}
