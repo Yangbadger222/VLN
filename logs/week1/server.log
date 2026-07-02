@@ -1,0 +1,43 @@
+listening on http://0.0.0.0:50051/v1/infer with backend=mock
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 36368)
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/usr/lib/python3.10/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/usr/lib/python3.10/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/usr/lib/python3.10/http/server.py", line 433, in handle
+    self.handle_one_request()
+  File "/usr/lib/python3.10/http/server.py", line 421, in handle_one_request
+    method()
+  File "/home/evens/SURF/VLN/navida_deploy/http_service.py", line 30, in do_POST
+    payload = json.loads(self.rfile.read(length) or b"{}")
+  File "/usr/lib/python3.10/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib/python3.10/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib/python3.10/json/decoder.py", line 353, in raw_decode
+    obj, end = self.scan_once(s, idx)
+json.decoder.JSONDecodeError: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 36374)
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/usr/lib/python3.10/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/usr/lib/python3.10/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/usr/lib/python3.10/http/server.py", line 433, in handle
+    self.handle_one_request()
+  File "/usr/lib/python3.10/http/server.py", line 421, in handle_one_request
+    method()
+  File "/home/evens/SURF/VLN/navida_deploy/http_service.py", line 31, in do_POST
+    request = request_from_dict(payload)
+  File "/home/evens/SURF/VLN/navida_deploy/codec.py", line 45, in request_from_dict
+    observation = payload["observation"]
+KeyError: 'observation'
+----------------------------------------
