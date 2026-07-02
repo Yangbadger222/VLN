@@ -1,0 +1,29 @@
+{
+  "api_version": "1.0",
+  "session_id": "warehouse-run-20260701-001",
+  "step_index": 2,
+  "command_type": "local_waypoints",
+  "chunks": [],
+  "waypoints": [
+    {
+      "x": 0.5,
+      "y": 0.0,
+      "yaw": 0.0
+    },
+    {
+      "x": 1.0,
+      "y": 0.18,
+      "yaw": 0.22
+    },
+    {
+      "x": 1.45,
+      "y": 0.42,
+      "yaw": 0.48
+    }
+  ],
+  "stop": false,
+  "metadata": {
+    "backend": "qwen_robotnav",
+    "inference_ms": 207.3
+  }
+}
