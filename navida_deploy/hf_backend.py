@@ -142,14 +142,23 @@ class HuggingFaceQwen25VLBackend:
             skip_special_tokens=True,
             clean_up_tokenization_spaces=False,
         )[0]
-        metadata = parse_target_metadata(generated_text)
-        if not metadata and self.target_detector_fallback:
-            metadata = self.detect_target(request, image)
+        target_metadata = parse_target_metadata(generated_text)
+        if not target_metadata and self.target_detector_fallback:
+            target_metadata = self.detect_target(request, image)
+
+        metadata = {
+            "backend": self.model_id,
+            "inference_ms": 0.0,
+            **target_metadata,
+        }
+
         return InferenceResponse(
             session_id=request.session_id,
             step_index=request.step_index,
+            command_type="action_chunks",
             chunks=parse_action_text(generated_text),
-            final=True,
+            waypoints=[],
+            stop=False,
             metadata=metadata,
         )
 

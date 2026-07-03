@@ -1,0 +1,35 @@
+========================================
+API v1 Live Acceptance
+Date: 2026年 07月 03日 星期五 20:06:31 CST
+Branch: week1/protocol-integration
+Commit: 0dbf28bd888c6bcf11f868a65ded253879ea0ab5
+========================================
+
+===== Health =====
+HTTP/1.0 200 OK
+Server: BaseHTTP/0.6 Python/3.10.12
+Date: Fri, 03 Jul 2026 12:06:31 GMT
+Content-Type: application/json
+Content-Length: 15
+
+{"status":"ok"}
+
+===== Valid client =====
+InferenceResponse(session_id='demo-session', step_index=0, chunks=[ActionChunk(index=0, action='forward', repeat=1, score=None), ActionChunk(index=1, action='turn_left', repeat=1, score=None)], command_type='action_chunks', waypoints=[], stop=False, metadata={'backend': 'mock', 'inference_ms': 0.016}, api_version='1.0')
+
+===== Malformed JSON =====
+HTTP status: 400
+{"api_version":"1.0","session_id":null,"step_index":null,"error":{"code":"INVALID_JSON","message":"request body is not valid JSON","details":{"line":1,"column":2}}}
+
+===== Missing observation =====
+HTTP status: 400
+{"api_version":"1.0","session_id":"missing-observation","step_index":0,"error":{"code":"INVALID_REQUEST","message":"observation must be an object","details":{"field":"observation"}}}
+
+===== Final health =====
+HTTP/1.0 200 OK
+Server: BaseHTTP/0.6 Python/3.10.12
+Date: Fri, 03 Jul 2026 12:06:31 GMT
+Content-Type: application/json
+Content-Length: 15
+
+{"status":"ok"}

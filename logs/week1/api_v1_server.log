@@ -1,0 +1,10 @@
+listening on http://0.0.0.0:50051/v1/infer with backend=mock
+[http] 127.0.0.1 [03/Jul/2026 20:06:31] "GET /health HTTP/1.1" 200 -
+[http] 127.0.0.1 [03/Jul/2026 20:06:31] "GET /health HTTP/1.1" 200 -
+[http] 127.0.0.1 [03/Jul/2026 20:06:31] "GET /health HTTP/1.1" 200 -
+[http] 127.0.0.1 [03/Jul/2026 20:06:31] "POST /v1/infer HTTP/1.1" 200 -
+[http] 127.0.0.1 [03/Jul/2026 20:06:31] INVALID_JSON: request body is not valid JSON details={'line': 1, 'column': 2}
+[http] 127.0.0.1 [03/Jul/2026 20:06:31] "POST /v1/infer HTTP/1.1" 400 -
+[http] 127.0.0.1 [03/Jul/2026 20:06:31] INVALID_REQUEST: observation must be an object details={'field': 'observation'}
+[http] 127.0.0.1 [03/Jul/2026 20:06:31] "POST /v1/infer HTTP/1.1" 400 -
+[http] 127.0.0.1 [03/Jul/2026 20:06:31] "GET /health HTTP/1.1" 200 -
