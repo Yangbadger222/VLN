@@ -146,7 +146,9 @@ def test_hf_backend_does_not_use_target_detector_without_fallback_enabled():
     )
 
     assert [chunk.action for chunk in response.chunks] == ["forward"]
-    assert response.metadata == {}
+    assert response.metadata["backend"] == backend.model_id
+    assert response.metadata["inference_ms"] == 0.0
+    assert "target" not in response.metadata
 
 
 def test_parse_target_metadata_extracts_json_target():

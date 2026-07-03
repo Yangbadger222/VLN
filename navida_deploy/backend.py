@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from .chunking import chunk_atomic_actions
-from .messages import ActionChunk, InferenceRequest, InferenceResponse
+from .messages import InferenceRequest, InferenceResponse
 
 
 class InferenceBackend(Protocol):
@@ -25,7 +25,12 @@ class MockNaVIDABackend:
         return InferenceResponse(
             session_id=request.session_id,
             step_index=request.step_index,
+            command_type="action_chunks",
             chunks=chunks,
-            final=True,
+            waypoints=[],
+            stop=False,
+            metadata={
+                "backend": "mock",
+                "inference_ms": 0.0,
+            },
         )
-

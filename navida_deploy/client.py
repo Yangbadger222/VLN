@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from .messages import InferenceRequest, Observation
 from .codec import response_to_dict
+from .messages import InferenceRequest, Observation
 from .server import run_mock_inference
+
+
+MINIMAL_JPEG = b"\xff\xd8\xff\xd9"
 
 
 def build_request(
@@ -11,8 +14,12 @@ def build_request(
     instruction: str,
     image_path: str | None = None,
     observation: Observation | None = None,
+    image_bytes: bytes | None = None,
 ) -> InferenceRequest:
-    obs = observation or Observation(image_path=image_path)
+    obs = observation or Observation(
+        image_path=image_path,
+        image_bytes=image_bytes,
+    )
     return InferenceRequest(
         session_id=session_id,
         step_index=step_index,
@@ -26,7 +33,10 @@ def demo_roundtrip() -> dict:
         "demo-session",
         0,
         "go forward then turn left",
-        image_path="sample.jpg",
+        observation=Observation(
+            image_bytes=MINIMAL_JPEG,
+            metadata={"camera": "demo"},
+        ),
     )
     response = run_mock_inference(request)
     return response_to_dict(response)
