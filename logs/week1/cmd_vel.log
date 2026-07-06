@@ -1,0 +1,23 @@
+# /cmd_vel evidence - 2026-07-06
+
+Source: recorded 2026-07-06 rerun summary from local branch history.
+
+## Normal ROS2 Mock path
+
+linear.x = 0.15
+angular.z = 0.0
+
+linear.x = 0.0
+angular.z = 0.0
+
+Conclusion:
+Motion command was followed by zero Twist.
+
+## Server-down safety path
+
+linear.x = 0.0
+angular.z = 0.0
+
+Conclusion:
+When the Mock server was unavailable, the bridge produced or maintained zero Twist.
+
