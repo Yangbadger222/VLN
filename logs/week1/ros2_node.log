@@ -1,0 +1,27 @@
+# ROS2 node evidence - 2026-07-06
+
+Source: recorded 2026-07-06 rerun summary from local branch history.
+
+## Normal path
+
+camera_publisher opened /dev/video0
+remote_controller subscribed to /navida/camera/image_raw
+remote_controller published /cmd_vel
+
+Result:
+ROS2 Mock action loop reached /cmd_vel and produced zero Twist after motion.
+
+## Server-down path
+
+remote inference failed: <urlopen error [Errno 111] Connection refused>
+command watchdog expired; publishing zero Twist
+
+Result:
+When the Mock server was unavailable, remote_controller did not reuse an old action.
+
+## Limits
+
+Target external camera: not tested.
+Real chassis serial path: not tested because /dev/serial_twistctl was missing.
+Remaining negative tests: timeout, invalid action, empty action, stale response.
+
