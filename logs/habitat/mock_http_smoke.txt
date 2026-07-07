@@ -1,15 +1,22 @@
-Mock inference server command identified:
+Mock inference server command:
   python scripts/run_inference_server.py --backend mock --host 127.0.0.1 --port 50051
 
-HTTP client smoke command identified:
-  python scripts/run_http_client.py
-
-Optional health check:
+Health check command:
   curl http://127.0.0.1:50051/health
 
-Status:
-  Not executed in this pass. Execution was kept to the requested safe baseline checks: editable install and pytest.
+HTTP client smoke command:
+  python scripts/run_http_client.py
 
-Notes:
-  scripts/run_http_client.py posts to http://127.0.0.1:50051/v1/infer.
-  scripts/run_mock_server.py is also present, but binds 0.0.0.0:50051 without explicit CLI flags.
+Status:
+  Passed in normal WSL2 terminal.
+
+Observed outputs:
+  Health endpoint returned {"status":"ok"}.
+  HTTP client returned an InferenceResponse from backend "mock".
+  API version: 1.0.
+  Action chunks: forward, turn_left.
+
+Logs:
+  logs/habitat/mock_server.log
+  logs/habitat/mock_health.txt
+  logs/habitat/mock_http_client.txt
