@@ -1,0 +1,36 @@
+Captured: 2026-07-08T00:53:34+08:00
+Repository: /home/evens/SURF/VLN
+Branch: codex/navida-deploy-scaffold
+
+Python:
+  executable: /home/evens/SURF/.venv-navida/bin/python
+  version: 3.10.12 (main, Jun 22 2026, 18:55:27) [GCC 11.4.0]
+
+Manual WSL2 terminal CUDA check:
+  torch: 2.5.1+cu121
+  cuda_available: True
+  device: NVIDIA GeForce RTX 4060 Ti
+  memory_GB: 8.0
+
+Codex/sandbox CUDA visibility check:
+  command: python -c 'import torch; print(torch.__version__); print(torch.cuda.is_available()); print(torch.version.cuda)'
+  output:
+    2.5.1+cu121
+    False
+    12.1
+
+Interpretation:
+  The manual WSL2 terminal CUDA check passed. The Codex/sandbox result should not be used by itself to conclude that CUDA is unavailable.
+
+Repo structure inspected:
+  README.md
+  pyproject.toml
+  navida_deploy/
+  scripts/
+  tests/
+
+Key baseline commands:
+  python -m pip install -e ".[dev]"
+  python -m pytest -q
+  python scripts/run_inference_server.py --backend mock --host 127.0.0.1 --port 50051
+  python scripts/run_http_client.py

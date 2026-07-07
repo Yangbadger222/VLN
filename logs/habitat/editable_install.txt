@@ -1,0 +1,27 @@
+Command:
+  python -m pip install -e ".[dev]"
+
+First sandboxed attempt:
+  Result: failed because sandboxed network access to the package index/proxy was blocked.
+  Relevant output:
+    WARNING: Retrying after connection broken by NewConnectionError(... Operation not permitted): /simple/setuptools/
+    ERROR: Could not find a version that satisfies the requirement setuptools<80,>=68
+    ERROR: No matching distribution found for setuptools<80,>=68
+
+Approved rerun with pip network access:
+  Result: passed.
+  Relevant output:
+    Obtaining file:///home/evens/SURF/VLN
+    Checking if build backend supports build_editable: finished with status 'done'
+    Preparing editable metadata (pyproject.toml): finished with status 'done'
+    Collecting pytest>=8 (from vln-navida-deploy==0.1.0)
+    Building editable for vln-navida-deploy (pyproject.toml): finished with status 'done'
+    Created wheel for vln-navida-deploy: filename=vln_navida_deploy-0.1.0-0.editable-py3-none-any.whl
+    Successfully built vln-navida-deploy
+    Successfully installed exceptiongroup-1.3.1 iniconfig-2.3.0 packaging-26.2 pluggy-1.6.0 pygments-2.20.0 pytest-9.1.1 tomli-2.4.1 vln-navida-deploy-0.1.0
+
+Notes:
+  Only the dev extra was installed.
+  Habitat was not installed.
+  Real NaVIDA model/server dependencies were not installed.
+  No model download was started.

@@ -1,0 +1,30 @@
+Command:
+  python -m pytest -q
+
+Run context:
+  Initial Codex sandbox run.
+
+Result:
+  Not the real baseline. The sandbox blocked loopback socket creation used by HTTP tests.
+
+Summary:
+  9 failed, 48 passed
+
+Representative error:
+  PermissionError: [Errno 1] Operation not permitted
+
+Affected HTTP/socket tests included:
+  tests/test_api_v1_http_errors.py::test_malformed_json_returns_structured_400_and_server_survives
+  tests/test_api_v1_http_errors.py::test_missing_observation_returns_invalid_request
+  tests/test_api_v1_http_errors.py::test_unsupported_api_version_returns_structured_error
+  tests/test_api_v1_http_errors.py::test_invalid_base64_returns_structured_error
+  tests/test_api_v1_http_errors.py::test_valid_request_returns_full_api_v1_shape
+  tests/test_http_backend.py::test_http_service_uses_injected_backend
+  tests/test_http_health.py::test_http_service_health_endpoint_reports_ok
+  tests/test_http_roundtrip.py::test_http_roundtrip_returns_api_v1_chunks
+
+Also failed in this run and remained the real baseline failure:
+  tests/test_ros2_bridge.py::test_ros2_gateway_posts_instruction_and_image_message
+
+Interpretation:
+  Ignore the loopback PermissionError failures for the WSL2 baseline. Use the loopback-allowed rerun as the real pytest baseline.

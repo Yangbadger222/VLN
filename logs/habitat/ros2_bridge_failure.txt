@@ -1,0 +1,24 @@
+Focused repro command:
+  python -m pytest tests/test_ros2_bridge.py::test_ros2_gateway_posts_instruction_and_image_message -q
+
+Focused repro result:
+  1 failed
+
+Relevant output:
+  AssertionError: assert False
+    where False = b'\xaa\xbb'.startswith(b'\xff\xd8')
+
+Environment dependency check:
+  command: python -c 'import cv2; print(cv2.__version__)'
+  output:
+    ModuleNotFoundError: No module named 'cv2'
+
+Additional dependency check:
+  command: python -c 'import numpy; print(numpy.__version__)'
+  output:
+    2.2.6
+
+Likely cause:
+  The dev baseline installs pytest only. opencv-python is declared in the jetson optional dependency group, not dev. navida_deploy.ros2_bridge._encode_compressed_image() returns None when cv2 cannot be imported, so ros_image_to_observation() falls back to raw image bytes.
+
+Source files were not modified.

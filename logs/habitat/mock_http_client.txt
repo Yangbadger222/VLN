@@ -1,0 +1,1 @@
+InferenceResponse(session_id='demo-session', step_index=0, chunks=[ActionChunk(index=0, action='forward', repeat=1, score=None), ActionChunk(index=1, action='turn_left', repeat=1, score=None)], command_type='action_chunks', waypoints=[], stop=False, metadata={'backend': 'mock', 'inference_ms': 0.01}, api_version='1.0')

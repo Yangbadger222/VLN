@@ -1,0 +1,15 @@
+Mock inference server command identified:
+  python scripts/run_inference_server.py --backend mock --host 127.0.0.1 --port 50051
+
+HTTP client smoke command identified:
+  python scripts/run_http_client.py
+
+Optional health check:
+  curl http://127.0.0.1:50051/health
+
+Status:
+  Not executed in this pass. Execution was kept to the requested safe baseline checks: editable install and pytest.
+
+Notes:
+  scripts/run_http_client.py posts to http://127.0.0.1:50051/v1/infer.
+  scripts/run_mock_server.py is also present, but binds 0.0.0.0:50051 without explicit CLI flags.

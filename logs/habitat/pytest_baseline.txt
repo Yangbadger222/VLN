@@ -1,0 +1,26 @@
+Command:
+  python -m pytest -q
+
+Run context:
+  Rerun with loopback sockets allowed.
+
+Result:
+  1 failed, 56 passed
+
+Failure:
+  tests/test_ros2_bridge.py::test_ros2_gateway_posts_instruction_and_image_message
+
+Relevant output:
+  AssertionError: assert False
+    where False = b'\xaa\xbb'.startswith(b'\xff\xd8')
+
+Test expectation:
+  captured["request"].observation.image_bytes.startswith(b"\xff\xd8")
+  captured["request"].observation.metadata["transport_encoding"] == "jpeg"
+
+Actual observed request bytes:
+  b"\xaa\xbb"
+
+Interpretation:
+  HTTP loopback tests passed when sandbox loopback restrictions were removed.
+  The remaining real baseline failure is the ROS2 bridge JPEG-compression expectation.
